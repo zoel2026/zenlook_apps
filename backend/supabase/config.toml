@@ -1,0 +1,4 @@
+project_id = "zenlook"
+
+[functions.send-push]
+verify_jwt = false

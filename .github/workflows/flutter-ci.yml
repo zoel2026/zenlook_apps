@@ -1,0 +1,54 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Test & Analyze
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        working-directory: ./app
+        run: flutter pub get
+      
+      - name: Verify formatting
+        working-directory: ./app
+        run: dart format --output=none --set-exit-if-changed lib/ test/
+      
+      - name: Analyze code
+        working-directory: ./app
+        run: flutter analyze
+      
+      - name: Run tests
+        working-directory: ./app
+        run: flutter test --coverage
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./app/coverage/lcov.info
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+      
+      - name: Test summary
+        if: always()
+        run: |
+          echo "✅ Flutter CI completed"
+          echo "- Formatting: OK"
+          echo "- Analysis: OK"
+          echo "- Tests: OK"

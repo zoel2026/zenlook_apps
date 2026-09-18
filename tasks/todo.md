@@ -1,0 +1,86 @@
+# Zenlook Feature Expansion — Task List
+
+## Phase 1: Foundation (Database + Theme + Locale)
+
+- [x] **Task 1**: Database Schema — tabel `blocked_users`, `message_reactions`, `user_reports` + kolom voice di `messages` + RLS
+- [x] **Task 2**: Theme Provider — dark/light mode toggle dengan persistensi
+- [x] **Task 3**: Locale Provider — multi language (ID/EN) dengan i18n
+
+### Checkpoint 1: Foundation
+- [ ] Database migration berhasil (perlu diterapkan ke Supabase)
+- [x] Theme toggle berfungsi (dark ↔ light)
+- [x] Locale toggle berfungsi (id ↔ en)
+
+## Phase 2: Social Features (Block + Report + Typing)
+
+- [x] **Task 4**: Block User — service + UI (block/unblock, filter dari chat & teman)
+- [x] **Task 5**: Report User — service + dialog alasan + rate limit
+- [x] **Task 6**: Typing Indicator — realtime broadcast + debounce + UI
+
+### Checkpoint 2: Social Features
+- [x] Block user berhasil (banner + RLS `is_blocked`)
+- [x] Report user berhasil (data masuk ke tabel + rate limit 24 jam)
+- [x] Typing indicator muncul real-time (channel broadcast + 5s auto-hide)
+
+## Phase 3: Chat Enhancement (Reactions + Voice)
+
+- [x] **Task 7**: Message Reactions — emoji picker + realtime update di bubble
+- [x] **Task 8**: Voice Message — record, upload, play dengan progress bar
+
+### Checkpoint 3: Chat Enhancement
+- [x] Reactions muncul dan real-time (long-press bubble)
+- [x] Voice message bisa direkam, dikirim, dan diputar (bucket `voice-messages`)
+- [x] `flutter analyze` clean
+
+## Phase 4: Location Features (Nearby Scan + Battery)
+
+- [x] **Task 9**: Nearby Users Scan — RPC radius 2km + bottom sheet UI
+- [x] **Task 10**: Battery Optimization — smart location (static/moving mode)
+
+### Checkpoint 4: Location Features
+- [ ] Nearby scan menampilkan user dalam radius 2km (butuh RPC di-deploy)
+- [x] Battery mode aktif (interval + distance filter adaptif)
+- [ ] Build apk release berhasil
+
+## Phase 5: Notification Enhancement
+
+- [x] **Task 11**: BBM-style Notifications — heads-up, quick reply, LED, custom sound
+
+### Checkpoint 5: Complete
+- [x] Semua 11 tugas selesai
+- [x] `flutter analyze` clean
+- [ ] `flutter test` — 4 pass, 6 gagal (semua pre-existing: Supabase init di home_test, ekspektasi Email di login)
+- [ ] Build release APK berhasil
+- [ ] Ready for review
+
+## Catatan Deploy yang Perlu Diterapkan
+- [ ] Jalankan `schema.sql` (canonical) di Supabase SQL Editor: tabel baru, RLS, RPC `get_nearby_users` + `haversine`, bucket `voice-messages` + policy
+- [ ] Verifikasi `flutter pub get` (dependensi `record` + `audioplayers`)
+
+## Phase 6: Audio Sharing & Background Player (MP3 di Chat)
+
+- [x] **Task 12**: Schema & Bucket — kolom `is_audio`/`audio_url`/`audio_name`/`audio_duration` di `messages` + bucket `audio-files` (public read, upload owner-only) + sinkron `backend/schema.sql` & root `schema.sql`
+- [x] **Task 13**: Upload & Kirim Pesan Audio — tombol attach (file_picker), validasi format (mp3/m4a/aac/wav) & ukuran (25 MB), insert message `is_audio` + i18n
+- [x] **Task 14**: Player & Background Service — dependency `file_picker`/`just_audio`/`audio_service`, deklarasi service di AndroidManifest + permission, MediaService global + queue dari riwayat chat
+- [x] **Task 15**: Bubble Audio di Chat — widget play/pause + progress + nama file/durasi, sinkronisasi voice player, auto-next antar lagu
+
+### Checkpoint: Audio Sharing
+- [x] Upload + kirim + tampil di bubble berfungsi (build APK debug sukses; runtime dengan device masih perlu uji manual)
+- [ ] Playback berjalan di background dengan kontrol media (perlu uji manual di device: lock screen/notifikasi + app di background)
+- [ ] Auto-next antar lagu berfungsi (perlu uji manual: pasang 2+ audio di chat, mainkan yang pertama)
+- [x] `flutter analyze` clean
+- [ ] Review dengan Bos
+
+## Phase 7: Listening Indicator (Sedang Mendengarkan Music)
+
+Referensi spec: `docs/SPEC-listening-status.md`
+
+- [x] **Task 16**: `ListeningService` — broadcast realtime (on/off + nama lagu), dedupe, cleanup di dispose, fallback timeout
+- [x] **Task 17**: Wiring di `ChatDetailScreen` — subscribe listen ke `gAudioService` (playbackState + mediaItem), emit broadcast play/stop, unsubscribe + reset di dispose
+- [x] **Task 18**: UI indikator peer + i18n — tampil `"<name> sedang mendengarkan <judul>"` dengan ikon music saat peer listening; key `chat_listening_music` ID/EN
+
+### Checkpoint: Listening Indicator
+- [ ] Indikator "sedang mendengarkan <judul>" muncul real-time di layar chat lawan (perlu uji manual 2 device)
+- [ ] Hilang saat pause/stop/tutup chat (perlu uji manual 2 device)
+- [x] `flutter analyze` clean
+- [ ] Review dengan Bos

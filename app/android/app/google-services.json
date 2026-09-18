@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "353120265034",
+    "project_id": "zenlook-632b8",
+    "storage_bucket": "zenlook-632b8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:353120265034:android:8edc4e8dca5a4095aad7b3",
+        "android_client_info": {
+          "package_name": "com.example.zenlook"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5YU1bQ5LIUvPSly1TVfPbUKKgdmN5cAE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

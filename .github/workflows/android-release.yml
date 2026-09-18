@@ -1,0 +1,102 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK & AAB
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Create .env file
+        working-directory: ./app
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+          echo "MAP_TILE_URL=${{ secrets.MAP_TILE_URL }}" >> .env
+          echo "STADIA_API_KEY=${{ secrets.STADIA_API_KEY }}" >> .env
+      
+      - name: Install dependencies
+        working-directory: ./app
+        run: flutter pub get
+      
+      - name: Run tests
+        working-directory: ./app
+        run: flutter test
+      
+      - name: Build APK
+        working-directory: ./app
+        run: flutter build apk --release
+      
+      - name: Build App Bundle
+        working-directory: ./app
+        run: flutter build appbundle --release
+      
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep 'version:' app/pubspec.yaml | sed 's/version: //')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+      
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zenlook-v${{ steps.version.outputs.version }}-release.apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+      
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zenlook-v${{ steps.version.outputs.version }}-release.aab
+          path: app/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+      
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            app/build/app/outputs/flutter-apk/app-release.apk
+            app/build/app/outputs/bundle/release/app-release.aab
+          body: |
+            ## Zenlook Apps v${{ steps.version.outputs.version }}
+            
+            ### Downloads
+            - **APK**: Direct install untuk Android
+            - **AAB**: Upload ke Google Play Store
+            
+            ### What's Changed
+            Check CHANGELOG.md for details
+            
+            ### Installation
+            1. Download APK
+            2. Enable "Install from unknown sources"
+            3. Install APK
+            4. Open Zenlook Apps
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

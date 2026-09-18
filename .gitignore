@@ -1,0 +1,75 @@
+# ============================================================
+# Environment / secrets — never commit real keys
+# ============================================================
+.env
+.env.*
+!.env.example
+
+# ============================================================
+# General / OS
+# ============================================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+
+# ============================================================
+# Flutter / Dart
+# ============================================================
+.dart_tool/
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+# Generated doc / API
+**/doc/api/
+# Symbolication & obfuscation outputs
+app.*.symbols
+app.*.map.json
+
+# ============================================================
+# Android
+# ============================================================
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/.gradle
+/android/local.properties
+/android/key.properties
+*.keystore
+*.jks
+*.p12
+*.key
+*.mobileprovision
+
+# ============================================================
+# iOS
+# ============================================================
+/ios/Pods/
+/ios/.symlinks/
+/ios/Flutter/Flutter.framework
+/ios/Flutter/Flutter.podspec
+/ios/Flutter/ephemeral/
+/ios/Flutter/Generated.xcconfig
+/ios/Flutter/flutter_export_environment.sh
+/ios/Runner/GeneratedPluginRegistrant.*
+/ios/ServiceDefinitions.json
+**/ios/Flutter/.last_build_id
+
+# ============================================================
+# IDEs / editors
+# ============================================================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+
+# ============================================================
+# Node (in case any tooling/scripts live alongside)
+# ============================================================
+node_modules/

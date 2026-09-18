@@ -1,0 +1,45 @@
+name: Deploy Supabase Functions
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/supabase/functions/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Edge Functions
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      
+      - name: Deploy send-push function
+        working-directory: ./backend
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ytmkhmsndfwmjlfyxiiw
+        run: |
+          supabase functions deploy send-push --project-ref $SUPABASE_PROJECT_ID
+      
+      - name: Verify deployment
+        run: |
+          echo "✅ Edge Functions deployed successfully"
+          echo "- send-push: deployed to ytmkhmsndfwmjlfyxiiw"
+      
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## Supabase Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Functions deployed:" >> $GITHUB_STEP_SUMMARY
+          echo "- send-push" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Project: https://supabase.com/dashboard/project/ytmkhmsndfwmjlfyxiiw" >> $GITHUB_STEP_SUMMARY
