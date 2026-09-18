@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:zenlook/screens/home_screen.dart';
 
 void main() {
+  setUpAll(() async {
+    try {
+      await dotenv.load(fileName: '.env');
+    } catch (_) {
+      await dotenv.load(fileName: '.env.example');
+    }
+  });
+
   testWidgets('Home screen shows navigation bar', (WidgetTester tester) async {
     await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
     await tester.pump();
