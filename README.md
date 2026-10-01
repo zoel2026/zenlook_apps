@@ -32,7 +32,7 @@ Zenly-like location sharing app with real-time map, friends, chat, and push noti
 │   │   └── utils/          # Helpers
 │   └── pubspec.yaml
 ├── backend/
-│   ├── schema.sql          # Canonical database schema (single source of truth; root copy = duplikat, pakai file ini)
+│   ├── schema.sql          # Canonical database schema (single source of truth)
 │   ├── supabase/functions/ # Supabase Edge Functions (send-push) — satu-satunya root functions
 │   ├── sql/                # Security patches + archive (jangan di-run ulang; lihat banner)
 │   └── .env.example
@@ -43,7 +43,7 @@ Zenly-like location sharing app with real-time map, friends, chat, and push noti
 
 ### Database
 
-Apply `schema.sql` via Supabase Dashboard SQL Editor — contains all tables,
+Apply `backend/schema.sql` via Supabase Dashboard SQL Editor — contains all tables,
 RLS policies, triggers, RPCs, indexes, and realtime config.
 
 ### Flutter App

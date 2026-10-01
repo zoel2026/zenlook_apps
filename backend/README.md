@@ -35,6 +35,7 @@ and security-definer RPCs for authentication flows.
 | `locations` | Latest GPS position per user | Yes |
 | `friendships` | Friend requests / accepted relationships | Yes |
 | `messages` | Direct 1-on-1 chat | Yes |
+| `waves` | "Wave" / ping ke teman (cooldown 5 menit) | Yes |
 | `location_history` | Append-only movement track log | No |
 | `rate_limit_attempts` | Server-side rate limiting tracking | No |
 | `app_secrets` | Shared secrets for server-side flows | No |

@@ -10,10 +10,21 @@ import 'services/fcm_service.dart';
 import 'services/locale_service.dart';
 import 'services/push_service.dart';
 import 'services/theme_service.dart';
+import 'utils/supabase_guard.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+
+  // Fail-fast (R3): pastikan app menunjuk ke project Supabase yang sama
+  // dengan backend. Mismatch -> tampilkan error jelas alih-alih berjalan
+  // dengan push/nearby yang mati diam-diam.
+  final configError = validateSupabaseUrl(url: dotenv.env['SUPABASE_URL']);
+  if (configError != null) {
+    runApp(ConfigErrorApp(message: configError));
+    return;
+  }
+
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     publishableKey: dotenv.env['SUPABASE_ANON_KEY']!,
@@ -38,6 +49,60 @@ Future<void> main() async {
       localeController: localeController,
     ),
   );
+}
+
+/// Layar error konfigurasi: ditampilkan saat validasi startup gagal
+/// (mis. project ref app != backend, atau SUPABASE_URL kosong).
+class ConfigErrorApp extends StatelessWidget {
+  const ConfigErrorApp({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: const Color(0xFF1E1E2E),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.error_outline, color: Color(0xFFFF6B6B)),
+                      SizedBox(width: 8),
+                      Text(
+                        'Konfigurasi tidak valid',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    message,
+                    style: const TextStyle(
+                      color: Color(0xFFD0D0E0),
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class ZenlyApps extends StatelessWidget {

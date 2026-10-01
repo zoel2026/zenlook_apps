@@ -6,6 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/fcm_service.dart';
 import '../services/locale_service.dart';
+import '../services/push_service.dart';
+import '../services/wave_service.dart';
+import '../utils/supabase_guard.dart';
 import '../widgets/app_sidebar.dart';
 import '../widgets/exit_confirmation.dart';
 import '../widgets/message_banner.dart';
@@ -29,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen>
   final _mapKey = GlobalKey<MapTabState>();
   final _chatKey = GlobalKey<ChatTabState>();
   StreamSubscription<AuthState>? _authSub;
+  RealtimeChannel? _waveChannel;
 
   static const _dark = Color(0xFF1A2130);
 
@@ -53,6 +57,16 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (_) {
       // Supabase belum terinisialisasi (mis. lingkungan test) — abaikan.
     }
+
+    // Dengarkan wave masuk saat app terbuka (banner). Push FCM tetap
+    // menangani saat app background/tertutup.
+    final uid = maybeClient()?.auth.currentUser?.id;
+    if (uid != null) {
+      _waveChannel = WaveService.watchIncoming(
+        myId: uid,
+        onWave: _onIncomingWave,
+      );
+    }
   }
 
   @override
@@ -68,6 +82,10 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _authSub?.cancel();
+    try {
+      _waveChannel?.unsubscribe();
+    } catch (_) {}
+    _waveChannel = null;
     super.dispose();
   }
 
@@ -75,6 +93,35 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() => _index = i);
     if (i == 0) _mapKey.currentState?.reloadFriends();
     if (i == 2) _chatKey.currentState?.reload();
+  }
+
+  Future<void> _onIncomingWave(String senderId) async {
+    if (!mounted) return;
+    // Chat dengan pengirim sedang terbuka — wave tak perlu banner.
+    if (PushService.activePeerId == senderId) return;
+    try {
+      final c = maybeClient();
+      if (c == null) return;
+      final p = await c
+          .from('profiles')
+          .select('username, full_name, avatar_url')
+          .eq('id', senderId)
+          .maybeSingle();
+      if (!mounted) return;
+      final full = (p?['full_name'] as String?)?.trim() ?? '';
+      final name = full.isNotEmpty
+          ? full
+          : ((p?['username'] as String?)?.trim().isNotEmpty == true
+                ? p!['username'] as String
+                : 'Zenlook');
+      MessageBanner.show(
+        context,
+        peerId: senderId,
+        peerName: name,
+        content: context.l.t('wave_received_banner'),
+        peerAvatar: p?['avatar_url'] as String?,
+      );
+    } catch (_) {}
   }
 
   void _onIncomingMessage(

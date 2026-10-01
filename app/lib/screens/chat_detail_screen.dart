@@ -15,6 +15,7 @@ import '../services/report_service.dart';
 import '../services/theme_service.dart';
 import '../services/typing_service.dart';
 import '../services/voice_service.dart';
+import '../services/wave_service.dart';
 import '../utils/supabase_guard.dart';
 import '../widgets/audio_message_bubble.dart';
 import '../widgets/back_button_widget.dart';
@@ -51,6 +52,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _hasMore = true;
   bool _peerTyping = false;
   bool _isBlocked = false;
+  bool _waving = false;
   RealtimeChannel? _channel;
   RealtimeChannel? _typingChannel;
   TypingService? _typingService;
@@ -530,6 +532,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+  Future<void> _sendWave() async {
+    final uid = _uid;
+    if (uid == null || _waving) return;
+    final l = context.l;
+    setState(() => _waving = true);
+    final result = await WaveService.sendWave(fromId: uid, toId: widget.peerId);
+    if (!mounted) return;
+    setState(() => _waving = false);
+    final String msg;
+    switch (result) {
+      case WaveResult.sent:
+        msg = l.t('wave_sent');
+      case WaveResult.cooldown:
+        msg = l.t('wave_cooldown');
+      case WaveResult.blocked:
+        msg = l.t('wave_blocked');
+      case WaveResult.failed:
+        msg = l.t('wave_failed');
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
   void _subscribe() {
     _channel = supabase.channel('chat_${_uid}_${widget.peerId}')
       ..onPostgresChanges(
@@ -884,6 +908,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ),
         backgroundColor: Colors.transparent,
         actions: [
+          IconButton(
+            tooltip: context.l.t('wave_send_tooltip'),
+            onPressed: _waving ? null : _sendWave,
+            icon: _waving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2.2),
+                  )
+                : const Icon(Icons.waving_hand_outlined),
+          ),
           PopupMenuButton<String>(
             onSelected: (v) {
               switch (v) {

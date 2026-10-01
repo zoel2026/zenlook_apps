@@ -52,7 +52,7 @@ app/lib/
   services/media_controller.dart     → global player (just_audio/audio_service)
   widgets/audio_message_bubble.dart  → bubble play/pause di chat
   screens/chat_detail_screen.dart    → tombol attach + integrasi bubble
-backend/schema.sql                   → kolom baru + bucket + policy (sinkron root schema.sql)
+backend/schema.sql                   → kolom baru + bucket + policy (single source of truth)
 ```
 
 ## Data Model (backend)

@@ -27,6 +27,11 @@
 //   Field ekstra (type/name/distance_m/latitude/longitude) diteruskan apa
 //   adanya ke data payload; app membedakan lewat data['type'].
 //
+// Tipe 'wave' (Wave / ping ke teman):
+//   { "type": "wave", "userId", "title", "body", "senderId" }
+//   Sama seperti chat: data-only, app menampilkan notifikasi lokal. Tidak ada
+//   penanganan khusus selain meneruskan data['type'] & data['sender_id'].
+//
 // Pesan dikirim sebagai DATA-ONLY (tanpa blok notification) supaya
 // aplikasi punya kendali penuh: bisa menekan notifikasi saat chat
 // dengan pengirim sedang terbuka. Aplikasi yang menampilkan notifikasinya.

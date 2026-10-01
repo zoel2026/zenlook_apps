@@ -49,17 +49,17 @@
 ### Checkpoint 5: Complete
 - [x] Semua 11 tugas selesai
 - [x] `flutter analyze` clean
-- [ ] `flutter test` — 4 pass, 6 gagal (semua pre-existing: Supabase init di home_test, ekspektasi Email di login)
+- [x] `flutter test` — 24 pass, 0 gagal (hijau per 2026-10-01; commit "Fix test environment initialization for map tab tests")
 - [ ] Build release APK berhasil
 - [ ] Ready for review
 
 ## Catatan Deploy yang Perlu Diterapkan
-- [ ] Jalankan `schema.sql` (canonical) di Supabase SQL Editor: tabel baru, RLS, RPC `get_nearby_users` + `haversine`, bucket `voice-messages` + policy
+- [ ] Jalankan `backend/schema.sql` (canonical) di Supabase SQL Editor: tabel baru, RLS, RPC `get_nearby_users` + `haversine`, bucket `voice-messages` + policy
 - [ ] Verifikasi `flutter pub get` (dependensi `record` + `audioplayers`)
 
 ## Phase 6: Audio Sharing & Background Player (MP3 di Chat)
 
-- [x] **Task 12**: Schema & Bucket — kolom `is_audio`/`audio_url`/`audio_name`/`audio_duration` di `messages` + bucket `audio-files` (public read, upload owner-only) + sinkron `backend/schema.sql` & root `schema.sql`
+- [x] **Task 12**: Schema & Bucket — kolom `is_audio`/`audio_url`/`audio_name`/`audio_duration` di `messages` + bucket `audio-files` (public read, upload owner-only) + `backend/schema.sql` (single source of truth)
 - [x] **Task 13**: Upload & Kirim Pesan Audio — tombol attach (file_picker), validasi format (mp3/m4a/aac/wav) & ukuran (25 MB), insert message `is_audio` + i18n
 - [x] **Task 14**: Player & Background Service — dependency `file_picker`/`just_audio`/`audio_service`, deklarasi service di AndroidManifest + permission, MediaService global + queue dari riwayat chat
 - [x] **Task 15**: Bubble Audio di Chat — widget play/pause + progress + nama file/durasi, sinkronisasi voice player, auto-next antar lagu
@@ -84,3 +84,18 @@ Referensi spec: `docs/SPEC-listening-status.md`
 - [ ] Hilang saat pause/stop/tutup chat (perlu uji manual 2 device)
 - [x] `flutter analyze` clean
 - [ ] Review dengan Bos
+
+## Phase 8: Wave — Ping "Di mana kamu?" 👋
+
+Referensi spec: `docs/SPEC-wave.md`
+
+- [x] **Task 19**: Backend — tabel `waves` + RLS (insert own ke teman accepted, select/delete involved) + cooldown 5 menit (trigger) + trigger push `notify_new_wave` (type `wave`) + realtime
+- [x] **Task 20**: `wave_service.dart` — `sendWave()` + `watchIncoming()` realtime + `WaveResult` (pure mapper untuk test)
+- [x] **Task 21**: UI — tombol 👋 di app bar chat + snackbar hasil; listener global di `HomeScreen` → `MessageBanner`
+- [x] **Task 22**: i18n ID/EN (`wave`, `wave_sent`, `wave_cooldown`, `wave_blocked`, `wave_failed`, `wave_received_banner`, `wave_send_tooltip`)
+
+### Checkpoint: Wave
+- [x] `flutter analyze` clean
+- [x] `flutter test` — 40 pass (termasuk `test/wave_service_test.dart`)
+- [ ] Uji manual 2 akun: kirim wave, cooldown, push saat app tertutup (perlu deploy `backend/schema.sql`)
+- [ ] Entry point tambahan (friends list / map) — MVP saat ini hanya dari layar chat

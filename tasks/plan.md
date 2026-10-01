@@ -61,7 +61,7 @@ Database Schema (blocked_users, message_reactions, user_reports, voice columns)
 - [ ] Kolom `is_voice`, `voice_url`, `voice_duration` di `messages`
 - [ ] Index untuk performa
 - [ ] Realtime enabled untuk `message_reactions`
-**Files:** `backend/schema.sql`, `schema.sql`
+**Files:** `backend/schema.sql`
 **Estimated scope:** M (2-3 files)
 
 #### Task 2: Theme Provider — Dark/Light Mode
@@ -265,7 +265,7 @@ playback. Referensi spec: `docs/SPEC-audio-sharing.md`.
 **Acceptance criteria:**
 - [ ] `messages` punya `is_audio`, `audio_url`, `audio_name`, `audio_duration`
 - [ ] Bucket `audio-files` public read + upload owner-only (`= auth.uid()`)
-- [ ] `backend/schema.sql` dan root `schema.sql` sinkron
+- [ ] `backend/schema.sql` (single source of truth) terbarui
 **Verification:** SQL valid & idempotent; `flutter analyze` tetap clean
 **Dependencies:** None
 **Estimated scope:** S

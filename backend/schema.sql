@@ -1233,6 +1233,129 @@ create policy "location_history_select_friends"
 grant select on public.location_history to authenticated;
 
 -- ============================================================================
+-- Table: waves  (fitur "Wave" / ping)
+-- Kirim gelombang 👋 ke teman untuk isyarat "di mana kamu?" / "ayo ketemuan".
+-- Disimpan agar bisa realtime + dedupe + audit singkat; maknanya ephemeral
+-- (diabaikan setelah dibaca). Cooldown 5 menit per pasangan (trigger).
+-- ============================================================================
+create table if not exists public.waves (
+    id          uuid primary key default gen_random_uuid(),
+    sender_id   uuid not null references public.profiles (id) on delete cascade,
+    receiver_id uuid not null references public.profiles (id) on delete cascade,
+    created_at  timestamptz not null default now(),
+    check (sender_id <> receiver_id)
+);
+
+create index if not exists waves_receiver_idx
+    on public.waves (receiver_id, created_at desc);
+
+-- Guard: cooldown 5 menit per pasangan pengirim->penerima (anti spam).
+-- Di-enforce server-side (bukan hanya di client).
+create or replace function public.waves_cooldown_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if exists (
+        select 1 from public.waves
+        where sender_id = new.sender_id
+          and receiver_id = new.receiver_id
+          and created_at > now() - interval '5 minutes'
+    ) then
+        raise exception 'Sudah mengirim wave ke pengguna ini baru-baru ini'
+            using errcode = 'unique_violation';
+    end if;
+    return new;
+end;
+$$;
+
+drop trigger if exists waves_cooldown_guard on public.waves;
+create trigger waves_cooldown_guard
+    before insert on public.waves
+    for each row execute procedure public.waves_cooldown_guard();
+
+-- Push: wave baru -> Edge Function send-push (type 'wave').
+create or replace function public.notify_new_wave()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    -- NOTE: ref harus konsisten dengan notify_new_message & app/.env (R3).
+    v_url      text := 'https://ytmkhmsndfwmjlfyxiiw.supabase.co/functions/v1/send-push';
+    v_internal text;
+    v_name     text;
+begin
+    select value into v_internal
+        from public.app_secrets
+        where name = 'push_internal_key'
+        limit 1;
+    if v_internal is null then
+        return new; -- belum dikonfigurasi: jangan gagalkan insert wave
+    end if;
+
+    select coalesce(nullif(full_name, ''), username, 'Zenlook')
+      into v_name
+      from public.profiles
+      where id = new.sender_id;
+
+    perform net.http_post(
+        url := v_url,
+        headers := jsonb_build_object(
+            'Content-Type',   'application/json',
+            'x-internal-key', v_internal
+        ),
+        body := jsonb_build_object(
+            'type',     'wave',
+            'userId',   new.receiver_id,
+            'title',    coalesce(v_name, 'Zenlook'),
+            'body',     coalesce(v_name, 'Seseorang') || ' mengirim wave 👋',
+            'senderId', new.sender_id
+        )
+    );
+
+    return new;
+end;
+$$;
+
+drop trigger if exists waves_notify_push on public.waves;
+create trigger waves_notify_push
+    after insert on public.waves
+    for each row execute procedure public.notify_new_wave();
+
+alter table public.waves enable row level security;
+
+-- waves: pengirim membuat sebagai dirinya, hanya ke teman accepted & tak blokir.
+drop policy if exists "waves_insert_own" on public.waves;
+create policy "waves_insert_own"
+    on public.waves for insert
+    with check (
+        auth.uid() = sender_id
+        and not public.is_blocked(sender_id, receiver_id)
+        and exists (
+            select 1 from public.friendships f
+            where f.status = 'accepted'
+              and ((f.user_id = sender_id and f.friend_id = receiver_id)
+                or (f.friend_id = sender_id and f.user_id = receiver_id))
+        )
+    );
+
+-- waves: hanya pihak yang terlibat yang bisa membaca.
+drop policy if exists "waves_select_involved" on public.waves;
+create policy "waves_select_involved"
+    on public.waves for select
+    using (auth.uid() = sender_id or auth.uid() = receiver_id);
+
+-- waves: pihak terlibat boleh menghapus (membersihkan riwayat).
+drop policy if exists "waves_delete_involved" on public.waves;
+create policy "waves_delete_involved"
+    on public.waves for delete
+    using (auth.uid() = sender_id or auth.uid() = receiver_id);
+
+-- ============================================================================
 -- Realtime: stream changes to subscribed clients
 -- ============================================================================
 do $$
@@ -1268,6 +1391,14 @@ begin
           and tablename = 'message_reactions'
     ) then
         alter publication supabase_realtime add table public.message_reactions;
+    end if;
+    if not exists (
+        select 1 from pg_publication_tables
+        where pubname = 'supabase_realtime'
+          and schemaname = 'public'
+          and tablename = 'waves'
+    ) then
+        alter publication supabase_realtime add table public.waves;
     end if;
 end
 $$;

@@ -132,6 +132,13 @@ class AppLocalizations {
 
     // Chat detail
     'chat_typing': 'sedang mengetik...',
+    'wave': 'Wave',
+    'wave_send_tooltip': 'Kirim wave 👋',
+    'wave_sent': 'Wave terkirim 👋',
+    'wave_cooldown': 'Sudah mengirim wave. Tunggu sebentar.',
+    'wave_blocked': 'Tidak bisa mengirim wave ke pengguna ini',
+    'wave_failed': 'Gagal mengirim wave',
+    'wave_received_banner': '👋 minta lokasimu',
     'chat_listening_music': 'sedang mendengarkan %s',
     'music_mp3': 'music mp3',
     'message_hint': 'Tulis pesan...',
@@ -380,6 +387,13 @@ class AppLocalizations {
     'you': 'You',
 
     'chat_typing': 'typing...',
+    'wave': 'Wave',
+    'wave_send_tooltip': 'Send a wave 👋',
+    'wave_sent': 'Wave sent 👋',
+    'wave_cooldown': 'Already waved. Wait a moment.',
+    'wave_blocked': 'Cannot wave this user',
+    'wave_failed': 'Failed to send wave',
+    'wave_received_banner': '👋 wants your location',
     'chat_listening_music': 'is listening to %s',
     'music_mp3': 'music mp3',
     'message_hint': 'Type a message...',

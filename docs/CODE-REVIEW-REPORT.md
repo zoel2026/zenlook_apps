@@ -10,6 +10,11 @@ Ruang lingkup: `app/` (Flutter), `backend/` (Supabase schema + Edge Functions), 
 | `flutter analyze` | ✅ No issues found |
 | `flutter test` | ❌ 4/10 lulus, 6 gagal |
 
+> Catatan (2026-10-01): status di atas adalah kondisi saat review ini ditulis.
+> Per 2026-10-01 `flutter analyze` tetap clean dan `flutter test` sudah
+> **24/24 lulus** setelah perbaikan inisialisasi lingkungan test (R1/R2).
+> Lihat bagian "Update 2026-10-01" di bawah.
+
 ---
 
 ## CRITICAL (blokir / harus diperbaiki)
@@ -149,3 +154,31 @@ Salah satu pasti salah. Kalau app menunjuk project yang berbeda dari kolom RLS/s
 - `get_nearby_users` full-scan; tambah index `locations(updated_at desc)` + prefilter bbox.
 - Split `chat_detail_screen.dart` (1104 baris) & `schema.sql` (1159 baris).
 - Voice player per-bubble (1 AudioPlayer/bubble) — migrasi ke satu shared player.
+
+---
+
+# Update 2026-10-01 — Pembersihan repo (hasil review ulang)
+
+## Status verifikasi terkini
+
+| Check | Hasil |
+|-------|-------|
+| `flutter analyze` | ✅ No issues found |
+| `flutter test` | ✅ 24/24 lulus |
+
+## Yang dibereskan
+
+| Item | Status |
+|---|---|
+| 5 file `nearby_feature_*.sql` di root (pendekatan PostGIS lama, memuat `DROP` berbahaya) | ✅ Dipindah ke `backend/sql/_archive/` + banner "SUPERSEDED — JANGAN DIJALANKAN" |
+| Duplikat `schema.sql` di root | ✅ Dihapus; `backend/schema.sql` jadi single source of truth |
+| Referensi ke root `schema.sql` di README/plan/todo/spec | ✅ Disinkronkan |
+| Dokumen usang soal status `flutter test` | ✅ Diperbarui |
+
+## Masih perlu tindakan manual
+
+- **Project ref Supabase (R3)** — `app/.env` (gitignored) harus dipastikan sama dengan
+  `ytmkhmsndfwmjlfyxiiw` yang dipakai backend/docs/CI. Belum bisa diverifikasi dari repo.
+- **`push_internal_key`** — pastikan `app_secrets.push_internal_key` == env
+  `PUSH_INTERNAL_KEY` Edge Function `send-push`.
+- `todo-list.html` di root — artefak ter-track; hapus bila memang tidak dipakai.
