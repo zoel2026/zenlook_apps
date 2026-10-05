@@ -720,6 +720,30 @@ $$;
 grant execute on function public.is_blocked(uuid, uuid) to anon;
 grant execute on function public.is_blocked(uuid, uuid) to authenticated;
 
+-- Helper: apakah p_owner menyembunyikan lokasinya dari p_viewer?
+-- Wajib security definer: kalau ditulis sebagai subquery biasa di dalam policy
+-- RLS, subquery itu ikut tunduk pada RLS location_visibility yang hanya
+-- mengizinkan user_id = auth.uid(), sehingga baris milik orang lain tidak akan
+-- terlihat dan penyaringan justru tidak pernah aktif.
+create or replace function public.location_hidden(p_owner uuid, p_viewer uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select exists (
+        select 1 from public.location_visibility
+        where user_id = p_owner and hidden_from_id = p_viewer
+    );
+$$;
+
+-- Policy RLS locations_select_friends dievaluasi untuk peran pemanggil, jadi
+-- anon juga butuh EXECUTE (mengikuti preseden is_blocked). Fungsi ini hanya
+-- mengembalikan boolean untuk satu pasangan, tidak membocorkan daftar.
+grant execute on function public.location_hidden(uuid, uuid) to anon;
+grant execute on function public.location_hidden(uuid, uuid) to authenticated;
+
 -- ============================================================================
 -- RPC: get_nearby_users
 -- Cari pengguna Zenlook dalam radius tertentu (default 2 km) yang BUKAN
@@ -791,6 +815,8 @@ begin
         where l.user_id <> auth.uid()
           and b.id is null
           and f.id is null
+          -- get_nearby_users berjalan sebagai security definer, jadi join ke
+          -- location_visibility tidak tertahan oleh RLS tabel tersebut.
           and lv.user_id is null
           and l.latitude is not null
           and l.longitude is not null
@@ -952,13 +978,10 @@ create policy "locations_select_friends"
               )
         )
         -- Lokasi yang disembunyikan pemilik dari viewer ini tidak terbaca.
+        -- Memakai helper security definer, bukan subquery langsung, supaya tidak
+        -- ikut tersaring RLS location_visibility yang hanya untuk pemilik.
         -- Ditambahkan 2026-10-05, lihat SPEC-hide-location.md.
-        and not exists (
-            select 1
-            from public.location_visibility lv
-            where lv.user_id = locations.user_id
-              and lv.hidden_from_id = auth.uid()
-        )
+        and not public.location_hidden(locations.user_id, auth.uid())
     );
 
 -- friendships: readable by involved users
@@ -1154,13 +1177,14 @@ begin
             raise exception 'Hanya kolom penghapusan yang boleh diubah oleh pengirim';
         end if;
 
-        -- Hapus untuk semua orang juga mengosongkan isi pesan supaya tidak ada
-        -- pemulihan isi lewat data lama. Isi pesan tidak boleh diubah selain
-        -- dikosongkan saat penghapusan.
+        -- Isi pesan hanya boleh berubah menjadi string kosong, dan hanya pada
+        -- saat pesan ditandai terhapus. Kolom content NOT NULL, jadi kosong
+        -- direpresentasikan sebagai '' bukan null. Tujuannya: isi lama tidak
+        -- bisa dipulihkan lewat SELECT langsung setelah dihapus.
         if new.content is distinct from old.content
            and not (old.is_deleted is false
                     and new.is_deleted
-                    and new.content is null) then
+                    and new.content = '') then
             raise exception 'Isi pesan tidak boleh diubah';
         end if;
 
@@ -1331,18 +1355,12 @@ begin
                          / (111320.0 * greatest(cos(radians(new.latitude)), 0.01)))
                  and not public.is_blocked(a.id, new.user_id)
                  and not public.is_blocked(new.user_id, a.id)
-                 -- Jangan kirim alert nearby ke orang yang menyembunyikan
-                 -- lokasinya dari kita, atau sebaliknya: alert membocorkan posisi.
-                 and not exists (
-                     select 1 from public.location_visibility lv
-                      where lv.user_id = new.user_id
-                        and lv.hidden_from_id = a.id
-                 )
-                 and not exists (
-                     select 1 from public.location_visibility lv
-                      where lv.user_id = a.id
-                        and lv.hidden_from_id = new.user_id
-                 )
+                 and not public.location_hidden(new.user_id, a.id)
+                 and not public.location_hidden(a.id, new.user_id)
+                 -- Dua arah: saya juga tidak boleh diberi tahu saat dia ada dekat saya,
+                 -- karena radius alert ikut membocorkan posisi yang sengaja disembunyikan.
+                 -- location_hidden() wajib security definer: sebagai subquery biasa
+                 -- di trigger ini akan ikut tunduk pada RLS tabelnya.
           ) x
          where x.dist_m <= x.radius
            and not exists (

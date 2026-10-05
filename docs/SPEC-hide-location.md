@@ -34,13 +34,17 @@ create table if not exists public.location_visibility (
 - RLS aktif. Policy select/delete hanya untuk `user_id = auth.uid()` (daftar
   penyembunyi milik pengguna itu sendiri). Tidak ada policy insert: entri baru
   hanya dibuat lewat RPC.
+- Helper `location_hidden(p_owner, p_viewer)` `security definer`, `set search_path = public`, grant ke anon + authenticated. Harus `security definer`: kalau ditulis sebagai subquery biasa di dalam policy RLS, subquery ikut tunduk pada RLS `location_visibility` yang hanya mengizinkan `user_id = auth.uid()`, sehingga baris milik orang lain tak terlihat dan penyaringan justru tidak pernah aktif.
 - RPC `set_location_hidden(p_peer uuid, p_hidden boolean)` `security definer`,
   `set search_path = public`, dengan validasi: harus teman accepted, tidak
   menyembunyikan diri sendiri, dan tidak ada blokir dua arah. Upsert/delete.
 - `locations_select_friends` ditambah:
-  `and not exists (select 1 from public.location_visibility lv where lv.user_id = locations.user_id and lv.hidden_from_id = auth.uid())`
-- `get_nearby_users` (RPC yang dipakai scan nearby) disaring dengan syarat
+  `and not public.location_hidden(locations.user_id, auth.uid())`
+- `get_nearby_users` (RPC yang dipakai scan nearby) disaring lewat left join
   yang sama supaya orang yang disembunyikan tidak muncul dari scan radar.
+- Trigger `locations_notify_nearby` juga disaring **dua arah**: alert radius ke
+  orang yang menyembunyikan lokasinya dari kita bocorkan posisi, dan sebaliknya
+  orang tersebut juga tidak boleh diberi tahu kita ada di dekatnya.
 
 ## Flutter
 - `services/location_visibility_service.dart`

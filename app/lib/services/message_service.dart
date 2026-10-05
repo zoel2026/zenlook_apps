@@ -111,8 +111,11 @@ class MessageService {
           .update({
             'is_deleted': true,
             'deleted_at': DateTime.now().toIso8601String(),
-            // Kosong untuk "hanya saya": tidak ada jejak untuk lawan.
+            // Kosong untuk "hanya saya": tidak ada jejak penghapus bagi lawan.
             'deleted_by': scope.affectsOtherPerson ? uid : null,
+            // Kolom content NOT NULL, jadi isi lama dikosongkan sebagai ''
+            // supaya tidak bisa dipulihkan lewat SELECT langsung.
+            'content': '',
           })
           .eq('id', messageId)
           .eq('sender_id', uid)

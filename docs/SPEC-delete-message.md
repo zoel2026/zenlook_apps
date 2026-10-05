@@ -17,6 +17,9 @@ Belum ada mode "edit pesan" atau "hapus untuk semua dengan batas waktu".
   Soft delete menjaga urutan dan histori.
 - **Isi pesan dikosongkan, bukan dihapus dari DB**: row tetap ada supaya
   "pesan ini dihapus" bisa ditampilkan dan reaksi lama tidak menggantung.
+  Kolom `content` NOT NULL, jadi kosong direpresentasikan sebagai `''`. Server
+  yang mengosongkan (bukan client), lewat trigger: dengan begitu isi lama tidak
+  bisa dipulihkan meski ada yang SELECT langsung.
 - **Hanya pengirim boleh menghapus**: itu syarat minimal untuk "hapus untuk
   semua". Enhancement (moderasi) di luar scope.
 - **"Hapus untuk saya saja" memakai soft delete yang sama**, dengan
@@ -35,10 +38,10 @@ alter table public.messages add column if not exists deleted_by uuid;
 - Policy baru `messages_delete_own` (for update, `auth.uid() = sender_id`).
   RLS hanya membatasi baris; pemisahan kolom per role tetap di trigger.
 - `messages_update_guard` diperluas jadi allowlist per role: pengirim hanya
-  boleh mengubah `is_deleted`/`deleted_at`/`deleted_by` (dan mengosongkan
-  `content` tepat saat penghapusan), penerima tetap hanya boleh `read_at`.
-  Perubahan `is_deleted` dari true kembali ke false ditolak supaya pesan tidak
-  bisa "dihidupkan" lagi.
+  boleh mengubah `is_deleted`/`deleted_at`/`deleted_by`, dan `content` hanya
+  boleh menjadi `''` tepat saat pesan ditandai terhapus; penerima tetap hanya
+  boleh `read_at`. Perubahan `is_deleted` dari true kembali ke false ditolak
+  supaya pesan tidak bisa "dihidupkan" lagi.
 - Tanpa index baru: query chat sudah memakai `messages_pair_idx` yang ada.
 - Realtime: `messages` sudah ada di publikasi realtime. Karena payload update
   ikut menimpa `is_deleted`, penerima melihat perubahan tanpa fetch ulang.
