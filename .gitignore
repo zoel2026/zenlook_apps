@@ -59,3 +59,5 @@ doc/api/
 # Node (in case any tooling/scripts live alongside)
 # ============================================================================
 node_modules/
+# Artefak tool AI lain
+.freebuff/

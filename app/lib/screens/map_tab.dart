@@ -11,6 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/location_service.dart';
 import '../services/locale_service.dart';
 import '../services/map_location_manager.dart';
+import '../services/tile_source.dart';
 import '../utils/supabase_guard.dart';
 import '../widgets/back_button_widget.dart';
 import '../widgets/map_debug_panel.dart';
@@ -29,6 +30,13 @@ class MapTab extends StatefulWidget {
 class MapTabState extends State<MapTab> {
   final _mapController = MapController();
   SupabaseClient get supabase => Supabase.instance.client;
+
+  /// Sumber tile peta. Fallback ke tile publik OSM hanya saat debug, supaya
+  /// rilis tidak melanggar kebijakan penggunaan tile OSM.
+  late final TileSource _tiles = resolveTileSource(
+    dotenv.env,
+    allowOsmFallback: kDebugMode,
+  );
 
   LocationManager? _locationManager;
   RealtimeChannel? _channel;
@@ -469,11 +477,12 @@ class MapTabState extends State<MapTab> {
               onMapReady: () => _mapReady = true,
             ),
             children: [
-              TileLayer(
-                urlTemplate: _getTileUrl(),
-                additionalOptions: _getTileOptions(),
-                userAgentPackageName: 'com.zenlook.app',
-              ),
+              if (_tiles.isEnabled)
+                TileLayer(
+                  urlTemplate: _tiles.urlTemplate!,
+                  additionalOptions: _tiles.options,
+                  userAgentPackageName: 'com.zenlook.app',
+                ),
               PolylineLayer(
                 polylines: [
                   if (_trackPoints.isNotEmpty)
@@ -569,6 +578,22 @@ class MapTabState extends State<MapTab> {
                 ),
               ),
             ),
+          if (!_tiles.isEnabled)
+            Positioned(
+              left: 16,
+              right: 16,
+              top: 16,
+              child: Card(
+                color: Colors.black.withValues(alpha: 0.75),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    context.l.t('map_tiles_not_configured'),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
           if (monitoringFriend != null)
             MapMonitoringPanel(
               friend: monitoringFriend,
@@ -597,30 +622,5 @@ class MapTabState extends State<MapTab> {
         ],
       ),
     );
-  }
-
-  String _getTileUrl() {
-    final url = dotenv.env['MAP_TILE_URL'];
-    if (url != null && url.isNotEmpty) {
-      return url;
-    }
-    return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-  }
-
-  Map<String, String> _getTileOptions() {
-    final stadiaKey = dotenv.env['STADIA_API_KEY'];
-    final mapboxToken = dotenv.env['MAPBOX_ACCESS_TOKEN'];
-    final maptilerKey = dotenv.env['MAPTILER_API_KEY'];
-
-    if (stadiaKey != null && stadiaKey.isNotEmpty) {
-      return {'api_key': stadiaKey};
-    }
-    if (mapboxToken != null && mapboxToken.isNotEmpty) {
-      return {'accessToken': mapboxToken};
-    }
-    if (maptilerKey != null && maptilerKey.isNotEmpty) {
-      return {'key': maptilerKey};
-    }
-    return {};
   }
 }

@@ -92,6 +92,8 @@ class AppLocalizations {
         'Izin lokasi ditolak. Aktifkan izin lokasi di pengaturan untuk fitur realtime.',
     'gps_off':
         'Lokasi (GPS) sedang mati. Nyalakan layanan lokasi perangkat agar posisi terkirim.',
+    'map_tiles_not_configured':
+        'Peta belum dikonfigurasi. Isi MAP_TILE_URL di .env agar tile tampil.',
 
     // Teman
     'search_friend': 'Cari nama atau username...',
@@ -351,6 +353,8 @@ class AppLocalizations {
         'Location permission denied. Enable location permission in settings for realtime features.',
     'gps_off':
         'Location (GPS) is off. Turn on device location to share your position.',
+    'map_tiles_not_configured':
+        'Map tiles are not configured. Set MAP_TILE_URL in .env to show tiles.',
 
     'search_friend': 'Search name or username...',
     'no_result': 'No results',
