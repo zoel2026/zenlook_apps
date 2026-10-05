@@ -26,8 +26,8 @@ Zenly-like location sharing app with real-time map, friends, chat, and push noti
 ├── app/                    # Flutter client
 │   ├── lib/
 │   │   ├── main.dart       # Entry point
-│   │   ├── screens/        # UI screens (10 files)
-│   │   ├── services/       # Location, FCM, push services
+│   │   ├── screens/        # UI screens
+│   │   ├── services/       # Location, FCM, push, status, visibility services
 │   │   ├── widgets/        # Reusable UI components
 │   │   └── utils/          # Helpers
 │   └── pubspec.yaml
@@ -36,7 +36,7 @@ Zenly-like location sharing app with real-time map, friends, chat, and push noti
 │   ├── supabase/functions/ # Supabase Edge Functions (send-push) — satu-satunya root functions
 │   ├── sql/                # Security patches + archive (jangan di-run ulang; lihat banner)
 │   └── .env.example
-└── docs/                   # Documentation, prototipe, FCM setup
+└── docs/                   # Documentation, prototipe, FCM setup, SPEC per fitur
 ```
 
 ## Quick Start
@@ -71,6 +71,11 @@ supabase functions deploy send-push
 - Location history / movement tracks
 - Login by username (no email needed)
 - Forgot password via 6-digit security code
+- Wave ping 👋 "di mana kamu?" with server-side cooldown
+- Status & aktivitas that expires automatically
+- Hide location from selected friends (enforced in RLS)
+- Delete message (soft delete: for me / for everyone)
+- Voice messages, audio files, and typing & listening indicators
 
 ## Security
 
@@ -78,5 +83,6 @@ supabase functions deploy send-push
 - Sensitive data isolated in `private_profiles`
 - Security codes stored as bcrypt hashes
 - Rate limiting on verification and reset RPCs
-- Message update guard (read_at only)
+- Message update guard (column allowlist per role: receiver `read_at`, sender soft delete only)
+- Location visibility enforced in RLS via the `location_hidden()` helper, not in the client
 - Internal key protection for Edge Functions
