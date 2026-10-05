@@ -31,6 +31,20 @@ WaveResult waveResultFromError({String? code, String? message}) {
   return WaveResult.failed;
 }
 
+/// Kunci i18n untuk pesan hasil pengiriman wave (pure, agar mudah diuji).
+String waveMessageKey(WaveResult result) {
+  switch (result) {
+    case WaveResult.sent:
+      return 'wave_sent';
+    case WaveResult.cooldown:
+      return 'wave_cooldown';
+    case WaveResult.blocked:
+      return 'wave_blocked';
+    case WaveResult.failed:
+      return 'wave_failed';
+  }
+}
+
 /// Service fitur "Wave" / ping.
 ///
 /// Kirim gelombang 👋 ke teman sebagai isyarat "di mana kamu? / ayo ketemuan".

@@ -540,18 +540,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final result = await WaveService.sendWave(fromId: uid, toId: widget.peerId);
     if (!mounted) return;
     setState(() => _waving = false);
-    final String msg;
-    switch (result) {
-      case WaveResult.sent:
-        msg = l.t('wave_sent');
-      case WaveResult.cooldown:
-        msg = l.t('wave_cooldown');
-      case WaveResult.blocked:
-        msg = l.t('wave_blocked');
-      case WaveResult.failed:
-        msg = l.t('wave_failed');
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l.t(waveMessageKey(result)))),
+    );
   }
 
   void _subscribe() {

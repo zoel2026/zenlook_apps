@@ -40,8 +40,12 @@ apa adanya ke data payload. App membedakan via `data['type']`.
   - `WaveResult` (sent/cooldown/blocked/failed) + `waveResultFromError()` (pure).
   - `sendWave({fromId, toId})` → insert `waves`.
   - `watchIncoming({myId, onWave})` → realtime channel filter `receiver_id`.
-- `screens/chat_detail_screen.dart` — tombol Wave (👋) di app bar;
-  snackbar hasil (terkirim / cooldown / tidak bisa / gagal).
+- `screens/chat_detail_screen.dart` — tombol Wave (👋) di app bar.
+- `screens/friends_tab.dart` — tombol Wave per teman di daftar teman.
+- `widgets/map_monitoring_panel.dart` — tombol Wave di panel monitoring peta.
+- `services/wave_service.dart` — `waveMessageKey(result)` memetakan hasil ke
+  kunci i18n (dipakai ketiga entry point, menghindari duplikasi).
+- Snackbar hasil (terkirim / cooldown / tidak bisa / gagal) di semua entry point.
 - `screens/home_screen.dart` — listener global wave masuk → `MessageBanner`
   (di-skip bila chat dengan pengirim sedang terbuka).
 - Push FCM foreground/background sudah menampilkan notifikasi dari payload
@@ -60,5 +64,4 @@ apa adanya ke data payload. App membedakan via `data['type']`.
 - Never: memuat pesan teks; mengirim notifikasi ke user yang memblokirku.
 
 ## Open Questions
-- Entry point tambahan (friends list / map monitoring panel) — MVP saat ini
-  hanya dari layar chat.
+- Tidak ada — entry point tersedia di chat, daftar teman, dan panel peta.

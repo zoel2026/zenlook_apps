@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/block_service.dart';
 import '../services/locale_service.dart';
 import '../services/theme_service.dart';
+import '../services/wave_service.dart';
 import '../utils/supabase_guard.dart';
 import '../widgets/back_button_widget.dart';
 import '../widgets/user_avatar.dart';
@@ -334,6 +335,17 @@ class _FriendsTabState extends State<FriendsTab> {
     );
   }
 
+  Future<void> _sendWave(String peerId) async {
+    final uid = _uid;
+    if (uid == null) return;
+    final l = context.l;
+    final result = await WaveService.sendWave(fromId: uid, toId: peerId);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l.t(waveMessageKey(result)))),
+    );
+  }
+
   void _openChat(String peerId, String peerName, String? avatarUrl) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -571,6 +583,15 @@ class _FriendsTabState extends State<FriendsTab> {
                           ),
                           tooltip: context.l.t('delete_friend_tooltip'),
                           onPressed: () => _removeFriend(f, name),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.waving_hand_outlined,
+                            color: Color(0xFFFFC107),
+                            size: 20,
+                          ),
+                          tooltip: context.l.t('wave_send_tooltip'),
+                          onPressed: () => _sendWave(otherId),
                         ),
                         IconButton(
                           icon: const Icon(

@@ -98,4 +98,4 @@ Referensi spec: `docs/SPEC-wave.md`
 - [x] `flutter analyze` clean
 - [x] `flutter test` — 40 pass (termasuk `test/wave_service_test.dart`)
 - [ ] Uji manual 2 akun: kirim wave, cooldown, push saat app tertutup (perlu deploy `backend/schema.sql`)
-- [ ] Entry point tambahan (friends list / map) — MVP saat ini hanya dari layar chat
+- [x] Entry point: tombol Wave di chat, daftar teman, dan panel monitoring peta

@@ -5,6 +5,8 @@ import 'package:latlong2/latlong.dart';
 
 import '../screens/chat_detail_screen.dart';
 import '../services/locale_service.dart';
+import '../services/wave_service.dart';
+import '../utils/supabase_guard.dart';
 import '../widgets/user_avatar.dart';
 import 'map_models.dart';
 
@@ -109,6 +111,12 @@ class MapMonitoringPanel extends StatelessWidget {
                   ),
                 ),
                 IconButton(
+                  icon: const Icon(Icons.waving_hand_outlined),
+                  color: const Color(0xFFFFC107),
+                  tooltip: l.t('wave_send_tooltip'),
+                  onPressed: () => _sendWave(context),
+                ),
+                IconButton(
                   icon: const Icon(Icons.chat_bubble_outline),
                   color: const Color(0xFF3D5AFE),
                   tooltip: l.t('chat'),
@@ -179,6 +187,17 @@ class MapMonitoringPanel extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _sendWave(BuildContext context) async {
+    final l = context.l;
+    final me = maybeClient()?.auth.currentUser?.id;
+    if (me == null) return;
+    final result = await WaveService.sendWave(fromId: me, toId: peerId);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l.t(waveMessageKey(result)))),
     );
   }
 

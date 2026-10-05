@@ -41,4 +41,13 @@ void main() {
       expect(waveResultFromError(), WaveResult.failed);
     });
   });
+
+  group('waveMessageKey', () {
+    test('memetakan tiap hasil ke kunci i18n', () {
+      expect(waveMessageKey(WaveResult.sent), 'wave_sent');
+      expect(waveMessageKey(WaveResult.cooldown), 'wave_cooldown');
+      expect(waveMessageKey(WaveResult.blocked), 'wave_blocked');
+      expect(waveMessageKey(WaveResult.failed), 'wave_failed');
+    });
+  });
 }
