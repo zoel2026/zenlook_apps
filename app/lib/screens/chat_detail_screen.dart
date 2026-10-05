@@ -10,6 +10,7 @@ import '../services/audio_player_service.dart';
 import '../services/block_service.dart';
 import '../services/listening_service.dart';
 import '../services/locale_service.dart';
+import '../services/message_service.dart';
 import '../services/push_service.dart';
 import '../services/report_service.dart';
 import '../services/theme_service.dart';
@@ -19,6 +20,7 @@ import '../services/wave_service.dart';
 import '../utils/supabase_guard.dart';
 import '../widgets/audio_message_bubble.dart';
 import '../widgets/back_button_widget.dart';
+import '../widgets/message_delete_button.dart';
 import '../widgets/report_dialog.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/voice_message_bubble.dart';
@@ -191,7 +193,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             'voice_duration': duration,
           })
           .select(
-              'id, sender_id, receiver_id, content, read_at, is_voice, voice_url, voice_duration, is_audio, audio_url, audio_name, audio_duration, created_at')
+              'id, sender_id, receiver_id, content, read_at, is_voice, voice_url, voice_duration, is_audio, audio_url, audio_name, audio_duration, created_at, is_deleted')
           .single();
       if (!mounted) return;
       setState(() => _messages.add(res));
@@ -252,7 +254,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             'audio_duration': duration,
           })
           .select(
-              'id, sender_id, receiver_id, content, read_at, is_voice, voice_url, voice_duration, is_audio, audio_url, audio_name, audio_duration, created_at')
+              'id, sender_id, receiver_id, content, read_at, is_voice, voice_url, voice_duration, is_audio, audio_url, audio_name, audio_duration, created_at, is_deleted')
           .single();
       if (!mounted) return;
       setState(() {
@@ -310,7 +312,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       final older = await supabase
           .from('messages')
           .select(
-              'id, sender_id, receiver_id, content, read_at, is_voice, voice_url, voice_duration, is_audio, audio_url, audio_name, audio_duration, created_at')
+              'id, sender_id, receiver_id, content, read_at, is_voice, voice_url, voice_duration, is_audio, audio_url, audio_name, audio_duration, created_at, is_deleted')
           .or(
               'and(sender_id.eq.$uid,receiver_id.eq.${widget.peerId}),'
               'and(sender_id.eq.${widget.peerId},receiver_id.eq.$uid)')
@@ -341,7 +343,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       final res = await supabase
           .from('messages')
           .select(
-              'id, sender_id, receiver_id, content, read_at, is_voice, voice_url, voice_duration, is_audio, audio_url, audio_name, audio_duration, created_at')
+              'id, sender_id, receiver_id, content, read_at, is_voice, voice_url, voice_duration, is_audio, audio_url, audio_name, audio_duration, created_at, is_deleted')
           .or(
               'and(sender_id.eq.$uid,receiver_id.eq.${widget.peerId}),'
               'and(sender_id.eq.${widget.peerId},receiver_id.eq.$uid)')
@@ -624,7 +626,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             'content': text,
           })
           .select(
-              'id, sender_id, receiver_id, content, read_at, is_voice, voice_url, voice_duration, is_audio, audio_url, audio_name, audio_duration, created_at')
+              'id, sender_id, receiver_id, content, read_at, is_voice, voice_url, voice_duration, is_audio, audio_url, audio_name, audio_duration, created_at, is_deleted')
           .single();
       _controller.clear();
       if (!mounted) return;
@@ -693,6 +695,40 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
     if (picked == null || !mounted) return;
     await _toggleReaction(m['id'] as String, picked);
+  }
+
+  /// Terapkan hasil hapus ke daftar lokal tanpa fetch ulang.
+  ///
+  /// "Hapus untuk semua orang" juga mengosongkan [MessageContentArgs] supaya
+  /// isi lama tidak tertinggal di memori perangkat.
+  void _onMessageDeleted(Map<String, dynamic> m, DeleteResult result) {
+    if (!mounted) return;
+    final l = context.l;
+    final messageId = m['id'] as String;
+    switch (result) {
+      case DeleteResult.ok:
+        setState(() {
+          final index = _messages.indexWhere((x) => x['id'] == messageId);
+          if (index == -1) return;
+          final updated = Map<String, dynamic>.from(_messages[index]);
+          updated['is_deleted'] = true;
+          updated['content'] = '';
+          _messages[index] = updated;
+          // Reaksi pada pesan yang dihapus sudah tidak relevan.
+          _reactions.remove(messageId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.t('delete_ok'))),
+        );
+      case DeleteResult.notAllowed:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.t('delete_not_allowed'))),
+        );
+      case DeleteResult.failed:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.t('delete_failed'))),
+        );
+    }
   }
 
   Widget _reactionChips(Map<String, dynamic> m) {
@@ -798,6 +834,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final read = m['read_at'] != null;
     final isVoice = (m['is_voice'] ?? false) as bool;
     final isAudio = (m['is_audio'] ?? false) as bool;
+    final isDeleted = (m['is_deleted'] ?? false) as bool;
+    final body = visibleMessageContent(
+      MessageContentArgs(
+        body: (m['content'] ?? '') as String,
+        isDeleted: isDeleted,
+        now: DateTime.now(),
+      ),
+    );
     return Column(
       crossAxisAlignment:
           mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -825,7 +869,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isVoice)
+                  if (body == null)
+                    Text(
+                      context.l.t('message_deleted'),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    )
+                  else if (isVoice)
                     VoiceMessageBubble(
                       voiceUrl: VoiceService.publicUrl(
                         m['voice_url'] as String,
@@ -838,7 +891,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     _audioBubble(m)
                   else
                     Text(
-                      m['content'] as String,
+                      body,
                       style: const TextStyle(color: Colors.white, fontSize: 15),
                     ),
                   const SizedBox(height: 2),
@@ -852,7 +905,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           fontSize: 10,
                         ),
                       ),
-                      if (mine) ...[
+                      if (mine && !isDeleted) ...[
+                        MessageDeleteButton(
+                          messageId: m['id'] as String,
+                          onDeleted: (result) => _onMessageDeleted(m, result),
+                        ),
                         const SizedBox(width: 3),
                         Icon(
                           read ? Icons.done_all : Icons.done,

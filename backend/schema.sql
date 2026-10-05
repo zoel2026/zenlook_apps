@@ -127,6 +127,23 @@ alter table public.messages add column if not exists audio_name text;
 alter table public.messages add column if not exists audio_duration double precision;
 
 -- ============================================================================
+-- Hapus Pesan (soft delete) 2026-10-05
+-- Baris messages tidak pernah dihapus fisik: is_deleted diisi true supaya
+-- urutan cursor pagination (load more) tetap utuh. deleted_by diisi hanya untuk
+-- mode "hapus untuk semua orang" supaya tidak ada jejak bagi lawan.
+-- Trigger messages_update_guard mengunci kolom mana yang boleh berubah per role
+-- dan melarang pemulihan pesan yang sudah dihapus.
+-- Lihat docs/SPEC-delete-message.md.
+-- ============================================================================
+alter table public.messages add column if not exists is_deleted boolean not null default false;
+alter table public.messages add column if not exists deleted_at timestamptz;
+alter table public.messages add column if not exists deleted_by uuid;
+
+-- Tidak ada index baru: query chat sudah memakai messages_pair_idx
+-- (least/greatest sender+receiver) yang ada di bagian bawah file ini, dan
+-- penyaringan is_deleted dilakukan di sisi client.
+
+-- ============================================================================
 -- Status & Aktivitas (2026-10-05)
 -- Status singkat milik pengguna sendiri ("lagi ngerjain skripsi"), disimpan di
 -- baris profiles supaya ikut terbaca bersama data profil yang sudah ada.
@@ -918,6 +935,14 @@ create policy "messages_update_read"
     using (auth.uid() = receiver_id)
     with check (auth.uid() = receiver_id);
 
+-- messages: the sender can soft delete their own message. Pencakupan kolom
+-- dijaga trigger messages_update_guard, RLS hanya membatasi baris.
+drop policy if exists "messages_delete_own" on public.messages;
+create policy "messages_delete_own"
+    on public.messages for update
+    using (auth.uid() = sender_id)
+    with check (auth.uid() = sender_id);
+
 -- ============================================================================
 -- RLS: blocked_users
 -- ============================================================================
@@ -1011,13 +1036,16 @@ create trigger user_reports_24h_guard
     for each row execute procedure public.user_reports_24h_guard();
 
 -- Guard: RLS cannot restrict per column, so a trigger locks UPDATE down to
--- read_at only. service_role bypasses the guard.
+-- a small allowlist per role: penerima hanya boleh mengubah read_at, pengirim
+-- hanya boleh melakukan soft delete (is_deleted/deleted_at/deleted_by).
+-- service_role bypasses the guard.
 create or replace function public.messages_update_guard()
 returns trigger
 language plpgsql
 as $$
 declare
     jwt_role text;
+    uid uuid := auth.uid();
 begin
     jwt_role := coalesce(
         current_setting('request.jwt.claims', true)::json ->> 'role', '');
@@ -1025,15 +1053,49 @@ begin
         return new;
     end if;
 
-    if auth.uid() is null or new.receiver_id <> auth.uid() then
-        raise exception 'Hanya penerima yang boleh memperbarui pesan';
+    if uid is null then
+        raise exception 'Tidak ada pengguna untuk memperbarui pesan';
+    end if;
+
+    -- Pengirim: hanya boleh soft delete, dan hanya satu arah (tidak ada undo).
+    if new.sender_id = uid then
+        if old.is_deleted and new.is_deleted is distinct from old.is_deleted then
+            raise exception 'Pesan yang dihapus tidak bisa dipulihkan';
+        end if;
+
+        if new.sender_id   is distinct from old.sender_id
+           or new.receiver_id is distinct from old.receiver_id
+           or new.created_at  is distinct from old.created_at
+           or new.read_at     is distinct from old.read_at then
+            raise exception 'Hanya kolom penghapusan yang boleh diubah oleh pengirim';
+        end if;
+
+        -- Hapus untuk semua orang juga mengosongkan isi pesan supaya tidak ada
+        -- pemulihan isi lewat data lama. Isi pesan tidak boleh diubah selain
+        -- dikosongkan saat penghapusan.
+        if new.content is distinct from old.content
+           and not (old.is_deleted is false
+                    and new.is_deleted
+                    and new.content is null) then
+            raise exception 'Isi pesan tidak boleh diubah';
+        end if;
+
+        return new;
+    end if;
+
+    -- Penerima: hanya boleh mengubah read_at.
+    if new.receiver_id <> uid then
+        raise exception 'Hanya pengirim atau penerima yang boleh memperbarui pesan';
     end if;
 
     if new.sender_id   is distinct from old.sender_id
        or new.receiver_id is distinct from old.receiver_id
        or new.content     is distinct from old.content
-       or new.created_at  is distinct from old.created_at then
-        raise exception 'Hanya kolom read_at yang boleh diubah';
+       or new.created_at  is distinct from old.created_at
+       or new.is_deleted  is distinct from old.is_deleted
+       or new.deleted_at  is distinct from old.deleted_at
+       or new.deleted_by  is distinct from old.deleted_by then
+        raise exception 'Hanya kolom read_at yang boleh diubah oleh penerima';
     end if;
 
     return new;

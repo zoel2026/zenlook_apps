@@ -281,6 +281,21 @@ class AppLocalizations {
     'voice_perm_fail':
         'Izin mikrofon ditolak. Aktifkan di pengaturan.',
 
+    // Hapus pesan
+    'message_deleted': 'Pesan ini dihapus',
+    'delete_menu': 'Hapus pesan',
+    'delete_only_me': 'Hapus untuk saya',
+    'delete_for_everyone': 'Hapus untuk semua orang',
+    'delete_confirm_only_me':
+        'Pesan ini akan hilang di daftar Anda, tapi masih terlihat oleh orang lain.',
+    'delete_confirm_everyone':
+        'Pesan ini akan dihapus untuk semua orang dan tidak bisa dipulihkan.',
+    'delete_confirm_action': 'Hapus',
+    'delete_ok': 'Pesan dihapus',
+    'delete_not_allowed':
+        'Pesan tidak bisa dihapus (bukan pesan Anda, atau sudah dihapus).',
+    'delete_failed': 'Gagal menghapus pesan',
+
     // Audio message
     'audio_message': 'Audio',
     'audio_pick_fail': 'Gagal memilih file audio',
@@ -543,6 +558,21 @@ class AppLocalizations {
     'voice_slide_cancel': 'Slide to cancel',
     'voice_recording': 'Recording...',
     'voice_send_fail': 'Failed to send voice message',
+
+    // Delete message
+    'message_deleted': 'This message was deleted',
+    'delete_menu': 'Delete message',
+    'delete_only_me': 'Delete for me',
+    'delete_for_everyone': 'Delete for everyone',
+    'delete_confirm_only_me':
+        'This message will disappear from your list, but the other person can still see it.',
+    'delete_confirm_everyone':
+        'This message will be deleted for everyone and cannot be restored.',
+    'delete_confirm_action': 'Delete',
+    'delete_ok': 'Message deleted',
+    'delete_not_allowed':
+        'Message cannot be deleted (not yours, or already deleted).',
+    'delete_failed': 'Failed to delete message',
     'voice_perm_fail':
         'Microphone permission denied. Enable it in settings.',
 

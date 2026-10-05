@@ -113,3 +113,18 @@ Referensi spec: `docs/SPEC-status.md`
 - [x] `flutter test` dY" 65 pass (termasuk `test/status_service_test.dart`)
 - [ ] Terapkan `backend/schema.sql` di Supabase SQL Editor
 - [ ] Uji manual: set status, terlihat di daftar teman, hangus setelah TTL
+
+## Phase 10: Hapus Pesan (Delete for Me / Everyone)
+
+Referensi spec: `docs/SPEC-delete-message.md`
+
+- [x] **Task 27**: Backend dY" kolum `is_deleted`/`deleted_at`/`deleted_by` di `messages` + policy `messages_delete_own` + perluasan trigger `messages_update_guard` (allowlist kolom per role, tanpa undo)
+- [x] **Task 28**: `message_service.dart` dY" `DeleteScope` (onlyMe/everyone), `mapDeleteErrorToResult()` (pure), `visibleMessageContent()` (pure), `deleteMessage()` dengan update dibatasi sender
+- [x] **Task 29**: UI dY" `widgets/message_delete_button.dart` (tombol + sheet cakupan + konfirmasi), bubble menampilkan "Pesan ini dihapus" untuk teks/suara/audio yang terhapus, `is_deleted` masuk semua query select pesan
+- [x] **Task 30**: i18n ID/EN (`message_deleted`, `delete_menu`, `delete_only_me`, `delete_for_everyone`, `delete_confirm_*`, `delete_ok`, `delete_not_allowed`, `delete_failed`)
+
+### Checkpoint: Hapus Pesan
+- [x] `flutter analyze` clean
+- [x] `flutter test` dY" 77 pass (9 unit + 3 widget untuk fitur ini)
+- [ ] Terapkan `backend/schema.sql` di Supabase SQL Editor
+- [ ] Uji manual: hapus untuk semua (lawan melihat "Pesan ini dihapus"), hapus untuk saya, dan trigger menolak pemulihan
