@@ -139,9 +139,37 @@ alter table public.messages add column if not exists is_deleted boolean not null
 alter table public.messages add column if not exists deleted_at timestamptz;
 alter table public.messages add column if not exists deleted_by uuid;
 
--- Tidak ada index baru: query chat sudah memakai messages_pair_idx
--- (least/greatest sender+receiver) yang ada di bagian bawah file ini, dan
--- penyaringan is_deleted dilakukan di sisi client.
+-- ============================================================================
+-- Sembunyikan Lokasi dari Teman Tertentu (2026-10-05)
+-- Satu baris per pasangan: "user_id menyembunyikan lokasinya dari hidden_from_id".
+-- Ditegakkan di RLS + RPC nearby, bukan di client, karena anon key cukup untuk
+-- SELECT langsung lewat REST.
+-- Lihat docs/SPEC-hide-location.md.
+-- ============================================================================
+create table if not exists public.location_visibility (
+    user_id      uuid not null references public.profiles(id) on delete cascade,
+    hidden_from_id uuid not null references public.profiles(id) on delete cascade,
+    created_at   timestamptz not null default now(),
+    primary key (user_id, hidden_from_id),
+    check (user_id <> hidden_from_id)
+);
+
+alter table public.location_visibility enable row level security;
+
+-- Pengguna hanya boleh membaca & menghapus daftar sembunyi miliknya sendiri.
+-- Tidak ada policy insert: entri baru hanya dibuat lewat RPC di bawah.
+drop policy if exists "location_visibility_select_own" on public.location_visibility;
+create policy "location_visibility_select_own"
+    on public.location_visibility for select
+    using (auth.uid() = user_id);
+
+drop policy if exists "location_visibility_delete_own" on public.location_visibility;
+create policy "location_visibility_delete_own"
+    on public.location_visibility for delete
+    using (auth.uid() = user_id);
+
+comment on table public.location_visibility is
+    'Pasangan (user_id, hidden_from_id) yang berarti user_id menyembunyikan lokasinya dari hidden_from_id.';
 
 -- ============================================================================
 -- Status & Aktivitas (2026-10-05)
@@ -758,9 +786,12 @@ begin
           on f.status = 'accepted'
          and ((f.user_id = auth.uid() and f.friend_id = l.user_id)
            or (f.friend_id = auth.uid() and f.user_id = l.user_id))
+        left join public.location_visibility lv
+          on (lv.user_id = l.user_id and lv.hidden_from_id = auth.uid())
         where l.user_id <> auth.uid()
           and b.id is null
           and f.id is null
+          and lv.user_id is null
           and l.latitude is not null
           and l.longitude is not null
           and l.updated_at > now() - interval '15 minutes'
@@ -773,6 +804,51 @@ $$;
 grant execute on function public.haversine(double precision, double precision, double precision, double precision) to anon;
 grant execute on function public.haversine(double precision, double precision, double precision, double precision) to authenticated;
 grant execute on function public.get_nearby_users(double precision, double precision, double precision) to authenticated;
+
+-- RPC: set_location_hidden(p_peer, p_hidden)
+-- Menyalakan/mematikan "sembunyikan lokasi saya dari teman ini".
+-- Security definer karena tabelnya tidak punya policy insert; validasinya
+-- di sini (teman accepted, bukan diri sendiri, tidak ada blokir).
+create or replace function public.set_location_hidden(p_peer uuid, p_hidden boolean)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+    uid uuid := auth.uid();
+begin
+    if uid is null then
+        raise exception 'Tidak terautentikasi' using errcode = '42501';
+    end if;
+    if p_peer is null or p_peer = uid then
+        raise exception 'Tidak bisa menyembunyikan lokasi dari diri sendiri';
+    end if;
+    if not exists (
+        select 1 from public.friendships f
+         where f.status = 'accepted'
+           and ((f.user_id = uid and f.friend_id = p_peer)
+             or (f.friend_id = uid and f.user_id = p_peer))
+    ) then
+        raise exception 'Hanya bisa disembunyikan dari teman yang sudah accepted';
+    end if;
+    if public.is_blocked(uid, p_peer) or public.is_blocked(p_peer, uid) then
+        raise exception 'Tidak bisa disembunyikan dari user yang saling memblokir';
+    end if;
+
+    if p_hidden then
+        insert into public.location_visibility (user_id, hidden_from_id)
+        values (uid, p_peer)
+        on conflict do nothing;
+    else
+        delete from public.location_visibility
+         where user_id = uid and hidden_from_id = p_peer;
+    end if;
+    return true;
+end;
+$$;
+
+grant execute on function public.set_location_hidden(uuid, boolean) to authenticated;
 
 -- private_profiles: owner-only access
 drop policy if exists "private_profiles_select_own" on public.private_profiles;
@@ -874,6 +950,14 @@ create policy "locations_select_friends"
                     (f.user_id = auth.uid() and f.friend_id = locations.user_id)
                  or (f.friend_id = auth.uid() and f.user_id = locations.user_id)
               )
+        )
+        -- Lokasi yang disembunyikan pemilik dari viewer ini tidak terbaca.
+        -- Ditambahkan 2026-10-05, lihat SPEC-hide-location.md.
+        and not exists (
+            select 1
+            from public.location_visibility lv
+            where lv.user_id = locations.user_id
+              and lv.hidden_from_id = auth.uid()
         )
     );
 
@@ -1247,6 +1331,18 @@ begin
                          / (111320.0 * greatest(cos(radians(new.latitude)), 0.01)))
                  and not public.is_blocked(a.id, new.user_id)
                  and not public.is_blocked(new.user_id, a.id)
+                 -- Jangan kirim alert nearby ke orang yang menyembunyikan
+                 -- lokasinya dari kita, atau sebaliknya: alert membocorkan posisi.
+                 and not exists (
+                     select 1 from public.location_visibility lv
+                      where lv.user_id = new.user_id
+                        and lv.hidden_from_id = a.id
+                 )
+                 and not exists (
+                     select 1 from public.location_visibility lv
+                      where lv.user_id = a.id
+                        and lv.hidden_from_id = new.user_id
+                 )
           ) x
          where x.dist_m <= x.radius
            and not exists (

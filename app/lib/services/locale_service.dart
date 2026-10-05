@@ -95,6 +95,22 @@ class AppLocalizations {
     'map_tiles_not_configured':
         'Peta belum dikonfigurasi. Isi MAP_TILE_URL di .env agar tile tampil.',
 
+    // Sembunyikan lokasi
+    'hide_location': 'Sembunyikan lokasi saya',
+    'show_location_to': 'Tampilkan lagi lokasi saya',
+    'hide_location_confirm':
+        'Teman ini tidak akan melihat lokasi Anda. Chat dan status tetap jalan.',
+    'show_location_confirm': 'Teman ini akan melihat lokasi Anda lagi.',
+    'location_hidden_badge': 'Lokasi disembunyikan',
+    'manage_hidden_locations': 'Kelola lokasi tersembunyi',
+    'hidden_locations_empty': 'Tidak ada teman yang disembunyikan',
+    'hidden_locations_count': 'Lokasi disembunyikan dari %d teman',
+    'location_visibility_ok': 'Pengaturan lokasi diperbarui',
+    'location_visibility_not_allowed':
+        'Tidak bisa mengubah visibility untuk teman ini',
+    'location_visibility_invalid': 'Permintaan tidak valid',
+    'location_visibility_failed': 'Gagal memperbarui pengaturan lokasi',
+
     // Status & Aktivitas
     'status': 'Status',
     'status_placeholder': 'Lagi ngapain?',
@@ -384,6 +400,22 @@ class AppLocalizations {
         'Location (GPS) is off. Turn on device location to share your position.',
     'map_tiles_not_configured':
         'Map tiles are not configured. Set MAP_TILE_URL in .env to show tiles.',
+
+    // Hide location
+    'hide_location': 'Hide my location',
+    'show_location_to': 'Show my location again',
+    'hide_location_confirm':
+        'This friend will not see your location. Chat and status still work.',
+    'show_location_confirm': 'This friend will see your location again.',
+    'location_hidden_badge': 'Location hidden',
+    'manage_hidden_locations': 'Manage hidden locations',
+    'hidden_locations_empty': 'No hidden friends',
+    'hidden_locations_count': 'Location hidden from %d friends',
+    'location_visibility_ok': 'Location setting updated',
+    'location_visibility_not_allowed':
+        'Cannot change visibility for this friend',
+    'location_visibility_invalid': 'Invalid request',
+    'location_visibility_failed': 'Failed to update location setting',
 
     // Status & activity
     'status': 'Status',

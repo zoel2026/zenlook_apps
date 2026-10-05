@@ -128,3 +128,18 @@ Referensi spec: `docs/SPEC-delete-message.md`
 - [x] `flutter test` dY" 77 pass (9 unit + 3 widget untuk fitur ini)
 - [ ] Terapkan `backend/schema.sql` di Supabase SQL Editor
 - [ ] Uji manual: hapus untuk semua (lawan melihat "Pesan ini dihapus"), hapus untuk saya, dan trigger menolak pemulihan
+
+## Phase 11: Sembunyikan Lokasi dari Teman Tertentu
+
+Referensi spec: `docs/SPEC-hide-location.md`
+
+- [x] **Task 31**: Backend dY" tabel `location_visibility` (PK pasangan, RLS select/delete own tanpa insert) + RPC `set_location_hidden(p_peer, p_hidden)` security definer dengan validasi teman accepted + bukan diri sendiri + bukan blokir
+- [x] **Task 32**: Penegakan RLS dY" `locations_select_friends` menyaring pasangan tersembunyi, `get_nearby_users` menyaring lewat left join, dan trigger `locations_notify_nearby` tidak mengirim alert ke pasangan tersembunyi (dua arah, supaya alert tidak membocorkan posisi)
+- [x] **Task 33**: Flutter dY" `location_visibility_service.dart` (`mapVisibilityErrorToResult`, `hiddenPeerIds`, `visibilityToggleLabel` pure) + tombol mata di baris teman dengan dialog konfirmasi
+- [x] **Task 34**: i18n ID/EN (`hide_location`, `show_location_to`, `hide_location_confirm`, `show_location_confirm`, `location_hidden_badge`, `location_visibility_*`)
+
+### Checkpoint: Sembunyikan Lokasi
+- [x] `flutter analyze` clean
+- [x] `flutter test` dY" 87 pass (10 test unit baru)
+- [ ] Terapkan `backend/schema.sql` di Supabase SQL Editor
+- [ ] Uji manual: sembunyikan lokasi dari B sebagai A, lalu SELECT locations sebagai B harus nol baris; scan nearby tidak memuat A

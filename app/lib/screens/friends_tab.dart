@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/block_service.dart';
 import '../services/locale_service.dart';
+import '../services/location_visibility_service.dart';
 import '../services/status_service.dart';
 import '../services/theme_service.dart';
 import '../services/wave_service.dart';
@@ -33,6 +34,10 @@ class _FriendsTabState extends State<FriendsTab> {
   RealtimeChannel? _channel;
   Timer? _debounce;
   Set<String> _blocked = {};
+
+  /// Teman yang lokasinya disembunyikan oleh pengguna ini.
+  Set<String> _hiddenFrom = {};
+  bool _updatingVisibility = false;
 
   String? get _uid => maybeClient()?.auth.currentUser?.id;
 
@@ -123,10 +128,78 @@ class _FriendsTabState extends State<FriendsTab> {
           .then((list) => list.map((p) => p['id'] as String).toSet());
       if (!mounted) return;
       setState(() => _blocked = blocked.union(mine));
+
+      // Daftar teman yang lokasinya disembunyikan.
+      final hidden = await LocationVisibilityService.myHiddenPeerIds();
+      if (!mounted) return;
+      setState(() => _hiddenFrom = hidden);
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
     }
+  }
+
+  /// Salin atau hentikan menyembunyikan lokasi ke [peerId].
+  Future<void> _toggleVisibility(String peerId) async {
+    if (_updatingVisibility) return;
+    final currentlyHidden = _hiddenFrom.contains(peerId);
+    final confirmed = await _confirmVisibility(peerId, !currentlyHidden);
+    if (!confirmed || !mounted) return;
+
+    setState(() => _updatingVisibility = true);
+    final result = await LocationVisibilityService.setHidden(
+      peerId: peerId,
+      hidden: !currentlyHidden,
+    );
+    if (!mounted) return;
+    setState(() {
+      _updatingVisibility = false;
+      if (result == VisibilityResult.ok) {
+        if (currentlyHidden) {
+          _hiddenFrom = {..._hiddenFrom}..remove(peerId);
+        } else {
+          _hiddenFrom = {..._hiddenFrom, peerId};
+        }
+      }
+    });
+    if (result == VisibilityResult.ok) return;
+    final key = switch (result) {
+      VisibilityResult.invalid => 'location_visibility_invalid',
+      VisibilityResult.notAllowed => 'location_visibility_not_allowed',
+      _ => 'location_visibility_failed',
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l.t(key))),
+    );
+  }
+
+  Future<bool> _confirmVisibility(String peerId, bool hide) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        title: Text(
+          dlgCtx.l.t(
+            hide ? 'hide_location' : 'show_location_to',
+          ),
+        ),
+        content: Text(
+          dlgCtx.l.t(
+            hide ? 'hide_location_confirm' : 'show_location_confirm',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dlgCtx).pop(false),
+            child: Text(dlgCtx.l.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dlgCtx).pop(true),
+            child: Text(dlgCtx.l.t(hide ? 'delete_confirm_action' : 'save')),
+          ),
+        ],
+      ),
+    );
+    return ok ?? false;
   }
 
   Future<void> _search(String query) async {
@@ -593,6 +666,25 @@ class _FriendsTabState extends State<FriendsTab> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        IconButton(
+                          icon: Icon(
+                            _hiddenFrom.contains(otherId)
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: _hiddenFrom.contains(otherId)
+                                ? Colors.orangeAccent
+                                : Colors.white54,
+                            size: 20,
+                          ),
+                          tooltip: context.l.t(
+                            visibilityToggleLabel(
+                              _hiddenFrom.contains(otherId),
+                            ),
+                          ),
+                          onPressed: _updatingVisibility
+                              ? null
+                              : () => _toggleVisibility(otherId),
+                        ),
                         IconButton(
                           icon: const Icon(
                             Icons.person_remove_outlined,
