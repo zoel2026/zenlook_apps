@@ -8,6 +8,7 @@ import '../services/battery_saver_service.dart';
 import '../services/location_service.dart';
 import '../services/locale_service.dart';
 import '../services/nearby_alert.dart';
+import '../services/status_service.dart';
 import '../services/theme_service.dart';
 import '../utils/supabase_guard.dart';
 import '../widgets/back_button_widget.dart';
@@ -27,10 +28,15 @@ class _ProfileTabState extends State<ProfileTab> {
   final _usernameController = TextEditingController();
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _statusController = TextEditingController();
   String? _email;
   String? _avatarUrl;
   bool _loading = true;
   bool _saving = false;
+  bool _savingStatus = false;
+  String? _statusEmoji;
+  StatusTtl _statusTtl = StatusTtl.defaultTtl;
+  DateTime? _statusExpiresAt;
   bool _uploadingAvatar = false;
   bool _alwaysShare = false;
   ThemeMode _themeMode = ThemeMode.system;
@@ -184,6 +190,7 @@ class _ProfileTabState extends State<ProfileTab> {
     _usernameController.dispose();
     _fullNameController.dispose();
     _phoneController.dispose();
+    _statusController.dispose();
     super.dispose();
   }
 
@@ -198,7 +205,8 @@ class _ProfileTabState extends State<ProfileTab> {
       final res = await supabase
           .from('profiles')
           .select(
-              'username, full_name, avatar_url, nearby_alerts_enabled, nearby_alert_radius')
+              'username, full_name, avatar_url, nearby_alerts_enabled, nearby_alert_radius, '
+              'status_text, status_emoji, status_expires_at')
           .eq('id', uid)
           .single();
       // Data sensitif (email/phone) tinggal di tabel terpisah own-only.
@@ -220,6 +228,19 @@ class _ProfileTabState extends State<ProfileTab> {
           (res['nearby_alert_radius'] as num?)?.toInt() ??
               nearbyRadiusDefault,
         );
+        // Status yang sudah lewat masa berlaku diperlakukan sebagai kosong,
+        // jadi form tidak menampilkan teks basi.
+        final statusExpiresAt =
+            DateTime.tryParse((res['status_expires_at'] ?? '') as String);
+        final now = DateTime.now();
+        _statusExpiresAt = statusExpiresAt;
+        _statusEmoji = res['status_emoji'] as String?;
+        _statusController.text = activeStatusText(
+              text: res['status_text'] as String?,
+              expiresAt: statusExpiresAt,
+              now: now,
+            ) ??
+            '';
         _loading = false;
       });
     } catch (_) {
@@ -310,6 +331,177 @@ class _ProfileTabState extends State<ProfileTab> {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
+    );
+  }
+
+  Widget _buildStatusCard(BuildContext context) {
+    final accent = const Color(0xFF3D5AFE);
+    return Card(
+      color: context.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.more_horiz, size: 20, color: Color(0xFF3D5AFE)),
+                const SizedBox(width: 8),
+                Text(
+                  context.l.t('status'),
+                  style: TextStyle(
+                    color: context.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _statusController,
+              style: TextStyle(color: context.textPrimary),
+              maxLength: kStatusMaxLength,
+              maxLines: 2,
+              minLines: 1,
+              decoration: InputDecoration(
+                labelText: context.l.t('status_placeholder'),
+                counterStyle: TextStyle(color: context.textFaded(0.5)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final emoji in kStatusEmojiChoices)
+                  _statusEmojiChip(context, emoji, accent),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              context.l.t('status_valid_for'),
+              style: TextStyle(color: context.textFaded(0.7), fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final ttl in StatusTtl.values)
+                  ChoiceChip(
+                    label: Text(context.l.t(statusTtlKey(ttl))),
+                    selected: _statusTtl == ttl,
+                    onSelected: (_) => setState(() => _statusTtl = ttl),
+                  ),
+              ],
+            ),
+            if (_statusExpiresAt != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                context.l.t(
+                  'status_expires_in',
+                ).replaceAll('%d', _remainingStatusText()),
+                style: TextStyle(color: context.textFaded(0.7), fontSize: 12),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _savingStatus ? null : _saveStatus,
+                    style: FilledButton.styleFrom(backgroundColor: accent),
+                    child: _savingStatus
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(context.l.t('status_save')),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _savingStatus ? null : _clearStatus,
+                    child: Text(context.l.t('status_clear')),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusEmojiChip(BuildContext context, String emoji, Color accent) {
+    final selected = _statusEmoji == emoji;
+    return InkWell(
+      onTap: () => setState(() => _statusEmoji = selected ? null : emoji),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: selected ? accent.withValues(alpha: 0.2) : Colors.transparent,
+          border: Border.all(
+            color: selected ? accent : context.textFaded(0.3),
+          ),
+        ),
+        child: Text(emoji, style: const TextStyle(fontSize: 18)),
+      ),
+    );
+  }
+
+  /// Sisa masa berlaku status dalam bentuk ringkas (mis. "3j 12m").
+  String _remainingStatusText() {
+    final expires = _statusExpiresAt;
+    if (expires == null) return '';
+    final left = expires.difference(DateTime.now());
+    if (left.isNegative) return '0m';
+    final hours = left.inHours;
+    final minutes = left.inMinutes.remainder(60);
+    return hours > 0 ? '${hours}j ${minutes}m' : '${minutes}m';
+  }
+
+  Future<void> _saveStatus() async {
+    setState(() => _savingStatus = true);
+    final ok = await StatusService.setStatus(
+      text: _statusController.text,
+      emoji: _statusEmoji,
+      ttl: _statusTtl,
+    );
+    if (!mounted) return;
+    setState(() {
+      _savingStatus = false;
+      if (ok) _statusExpiresAt = DateTime.now().add(_statusTtl.duration);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.l.t(ok ? 'status_saved' : 'status_save_fail')),
+      ),
+    );
+  }
+
+  Future<void> _clearStatus() async {
+    setState(() => _savingStatus = true);
+    final ok = await StatusService.clearStatus();
+    if (!mounted) return;
+    setState(() {
+      _savingStatus = false;
+      if (ok) {
+        _statusExpiresAt = null;
+        _statusEmoji = null;
+        _statusController.clear();
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.l.t(ok ? 'status_cleared' : 'status_save_fail')),
+      ),
     );
   }
 
@@ -424,6 +616,8 @@ class _ProfileTabState extends State<ProfileTab> {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 24),
+                    _buildStatusCard(context),
                     const SizedBox(height: 24),
                     FilledButton(
                       onPressed: _saving ? null : _save,

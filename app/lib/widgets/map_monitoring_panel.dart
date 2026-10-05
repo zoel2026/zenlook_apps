@@ -99,6 +99,17 @@ class MapMonitoringPanel extends StatelessWidget {
                           ),
                         ],
                       ),
+                      if (friend.activityLine != null)
+                        Text(
+                          friend.activityLine!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF3D5AFE),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       Text(
                         '${l.t('last_update')}: '
                         '${_lastUpdateText(l, friend.updatedAt)}',

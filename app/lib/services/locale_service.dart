@@ -95,6 +95,20 @@ class AppLocalizations {
     'map_tiles_not_configured':
         'Peta belum dikonfigurasi. Isi MAP_TILE_URL di .env agar tile tampil.',
 
+    // Status & Aktivitas
+    'status': 'Status',
+    'status_placeholder': 'Lagi ngapain?',
+    'status_valid_for': 'Berlaku selama',
+    'status_expires_in': 'Hangus dalam %d',
+    'status_ttl_1h': '1 jam',
+    'status_ttl_4h': '4 jam',
+    'status_ttl_8h': '8 jam',
+    'status_save': 'Simpan Status',
+    'status_clear': 'Hapus Status',
+    'status_saved': 'Status disimpan',
+    'status_cleared': 'Status dihapus',
+    'status_save_fail': 'Gagal menyimpan status',
+
     // Teman
     'search_friend': 'Cari nama atau username...',
     'no_result': 'Tidak ada hasil',
@@ -355,6 +369,20 @@ class AppLocalizations {
         'Location (GPS) is off. Turn on device location to share your position.',
     'map_tiles_not_configured':
         'Map tiles are not configured. Set MAP_TILE_URL in .env to show tiles.',
+
+    // Status & activity
+    'status': 'Status',
+    'status_placeholder': 'What are you up to?',
+    'status_valid_for': 'Valid for',
+    'status_expires_in': 'Expires in %d',
+    'status_ttl_1h': '1 hour',
+    'status_ttl_4h': '4 hours',
+    'status_ttl_8h': '8 hours',
+    'status_save': 'Save Status',
+    'status_clear': 'Clear Status',
+    'status_saved': 'Status saved',
+    'status_cleared': 'Status cleared',
+    'status_save_fail': 'Failed to save status',
 
     'search_friend': 'Search name or username...',
     'no_result': 'No results',

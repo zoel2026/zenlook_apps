@@ -11,6 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/location_service.dart';
 import '../services/locale_service.dart';
 import '../services/map_location_manager.dart';
+import '../services/status_service.dart';
 import '../services/tile_source.dart';
 import '../utils/supabase_guard.dart';
 import '../widgets/back_button_widget.dart';
@@ -199,7 +200,10 @@ class MapTabState extends State<MapTab> {
 
       final friends = await supabase
           .from('profiles')
-          .select('id, username, full_name, status, avatar_url, locations(*)')
+          .select(
+            'id, username, full_name, status, avatar_url, locations(*), '
+            'status_text, status_emoji, status_expires_at',
+          )
           .inFilter('id', friendIds);
 
       if (!mounted) return;
@@ -213,6 +217,15 @@ class MapTabState extends State<MapTab> {
           );
           data.avatar = (f['avatar_url'] ?? '') as String;
           data.status = (f['status'] ?? 'offline') as String;
+          // Status aktivitas: difilter di sini supaya panel tidak perlu
+          // tahu aturan expire (lihat statusLine di status_service).
+          data.activityLine = statusLine(
+            emoji: f['status_emoji'] as String?,
+            text: f['status_text'] as String?,
+            expiresAt:
+                DateTime.tryParse((f['status_expires_at'] ?? '') as String),
+            now: DateTime.now(),
+          );
           final locs = f['locations'];
           Map<String, dynamic>? loc;
           if (locs is List && locs.isNotEmpty) {

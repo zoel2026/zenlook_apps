@@ -127,6 +127,35 @@ alter table public.messages add column if not exists audio_name text;
 alter table public.messages add column if not exists audio_duration double precision;
 
 -- ============================================================================
+-- Status & Aktivitas (2026-10-05)
+-- Status singkat milik pengguna sendiri ("lagi ngerjain skripsi"), disimpan di
+-- baris profiles supaya ikut terbaca bersama data profil yang sudah ada.
+-- Masa berlaku (status_expires_at) dicek di sisi client; tidak ada job
+-- pembersihan. Tidak butuh policy RLS baru: membaca lewat
+-- profiles_select_others, menulis lewat profiles_update_own.
+-- Lihat docs/SPEC-status.md.
+-- ============================================================================
+alter table public.profiles add column if not exists status_text text;
+alter table public.profiles add column if not exists status_emoji text;
+alter table public.profiles add column if not exists status_expires_at timestamptz;
+
+-- Batas panjang status (60) sama dengan kStatusMaxLength di Flutter.
+-- Dibiungkus do $$ agar aman dijalankan ulang (ADD CONSTRAINT tidak punya IF NOT EXISTS).
+do $$
+begin
+    if not exists (
+        select 1 from pg_constraint where conname = 'profiles_status_text_len'
+    ) then
+        alter table public.profiles
+            add constraint profiles_status_text_len
+            check (status_text is null or char_length(status_text) <= 60);
+    end if;
+end $$;
+
+-- Status yang sudah lewat masa berlaku tidak perlu dibersihkan di database:
+-- client menganggapnya tidak ada (lihat isStatusActive di Flutter).
+
+-- ============================================================================
 -- Table: blocked_users
 -- User A memblokir User B. Berlaku dua arah: tidak bisa chat,
 -- melihat lokasi, atau mengirim friend request.

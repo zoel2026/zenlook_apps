@@ -99,3 +99,17 @@ Referensi spec: `docs/SPEC-wave.md`
 - [x] `flutter test` â€” 40 pass (termasuk `test/wave_service_test.dart`)
 - [ ] Uji manual 2 akun: kirim wave, cooldown, push saat app tertutup (perlu deploy `backend/schema.sql`)
 - [x] Entry point: tombol Wave di chat, daftar teman, dan panel monitoring peta
+## Phase 9: Status & Aktivitas — " lagi ngapain?" dY`<
+
+Referensi spec: `docs/SPEC-status.md`
+
+- [x] **Task 23**: Backend dY" kolum `status_text`/`status_emoji`/`status_expires_at` di `profiles` + constraint panjang 60 karakter (idempotent, tanpa policy RLS baru)
+- [x] **Task 24**: `status_service.dart` dY" `StatusTtl` + `isStatusActive()`/`activeStatusText()`/`statusLine()` (pure) + `setStatus()`/`clearStatus()`
+- [x] **Task 25**: UI dY" kartu Status di `ProfileTab` (teks, pilihan emoji, masa berlaku 1/4/8 jam, Simpan & Hapus) + status teman di daftar teman dan panel monitoring peta
+- [x] **Task 26**: i18n ID/EN (`status`, `status_placeholder`, `status_valid_for`, `status_expires_in`, `status_ttl_*`, `status_save`, `status_clear`, `status_saved`, `status_cleared`, `status_save_fail`)
+
+### Checkpoint: Status & Aktivitas
+- [x] `flutter analyze` clean
+- [x] `flutter test` dY" 65 pass (termasuk `test/status_service_test.dart`)
+- [ ] Terapkan `backend/schema.sql` di Supabase SQL Editor
+- [ ] Uji manual: set status, terlihat di daftar teman, hangus setelah TTL

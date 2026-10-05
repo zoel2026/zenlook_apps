@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/block_service.dart';
 import '../services/locale_service.dart';
+import '../services/status_service.dart';
 import '../services/theme_service.dart';
 import '../services/wave_service.dart';
 import '../utils/supabase_guard.dart';
@@ -100,7 +101,10 @@ class _FriendsTabState extends State<FriendsTab> {
       if (ids.isNotEmpty) {
         final res = await supabase
             .from('profiles')
-            .select('id, username, full_name, avatar_url')
+            .select(
+              'id, username, full_name, avatar_url, '
+              'status_text, status_emoji, status_expires_at',
+            )
             .inFilter('id', ids.toList());
         for (final p in res) {
           profiles[p['id'] as String] = p;
@@ -358,6 +362,19 @@ class _FriendsTabState extends State<FriendsTab> {
     );
   }
 
+  /// Subtitle baris teman: status aktivitas kalau masih aktif, kalau tidak
+  /// Display nada. Null kalau status kosong / sudah hangus.
+  Widget? _statusSubtitle(Map<String, dynamic> p) {
+    final line = statusLine(
+      emoji: p['status_emoji'] as String?,
+      text: p['status_text'] as String?,
+      expiresAt: DateTime.tryParse((p['status_expires_at'] ?? '') as String),
+      now: DateTime.now(),
+    );
+    if (line == null) return null;
+    return Text(line, style: TextStyle(color: context.textFaded(0.6)));
+  }
+
   Widget _resultTile(Map<String, dynamic> p) {
     final id = p['id'] as String;
     final name = (p['username'] ?? p['full_name'] ?? 'Pengguna') as String;
@@ -572,6 +589,7 @@ class _FriendsTabState extends State<FriendsTab> {
                         style: TextStyle(
                             color: context.textPrimary,
                             fontWeight: FontWeight.w600)),
+                    subtitle: _statusSubtitle(p),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
