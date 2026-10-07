@@ -61,3 +61,7 @@ doc/api/
 node_modules/
 # Artefak tool AI lain
 .freebuff/
+
+# generated artifacts
+todo-list.html
+
