@@ -2,17 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../services/locale_service.dart';
 import '../services/nearby_service.dart';
+import '../services/premium_service.dart';
 import '../services/theme_service.dart';
 import '../utils/supabase_guard.dart';
 import 'user_avatar.dart';
 
-/// Bottom sheet daftar pengguna dalam radius 2 km (non-teman, non-blokir).
+/// Bottom sheet daftar pengguna dalam radius (non-teman, non-blokir).
 Future<void> showNearbyUsersSheet(
   BuildContext context, {
   required double lat,
   required double lng,
+  double radiusKm = 2,
 }) async {
-  final users = await NearbyService.scan(lat, lng, radiusKm: 2);
+  final isPro = await PremiumService.isPremium();
+  final radiusClamped = PremiumService.radiusClamped(radiusKm, isPro);
+  final users = await NearbyService.scan(lat, lng, radiusKm: radiusClamped);
   if (!context.mounted) return;
   await showModalBottomSheet(
     context: context,
@@ -22,7 +26,7 @@ Future<void> showNearbyUsersSheet(
       final l = sheetCtx.l;
       return DraggableScrollableSheet(
         expand: false,
-        initialChildSize: 0.6,
+        initialChildSize: 0.65,
         maxChildSize: 0.9,
         builder: (ctx, scrollController) => Column(
           children: [
@@ -40,13 +44,50 @@ Future<void> showNearbyUsersSheet(
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    l.t('scan_notice', args: [2]),
+                    l.t('scan_notice', args: [radiusClamped.toStringAsFixed(radiusClamped >= 10 ? 0 : 1)]),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: ctx.textFaded(0.5),
                       fontSize: 12,
                     ),
                   ),
+                  if (!isPro && radiusKm > 2.0) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx)
+                            .colorScheme
+                            .primaryContainer
+                            .withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        l.t(
+                          'premium_nearby_limit',
+                          args: [2, 10],
+                        ),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: ctx.textPrimary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (isPro) ...[
+                    const SizedBox(height: 6),
+                    Chip(
+                      visualDensity: VisualDensity.compact,
+                      label: Text(
+                        l.t('premium_pro_badge'),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -241,6 +241,30 @@ create table if not exists public.user_reports (
 );
 
 -- ============================================================================
+-- Table: entitlements (Premium) — 2026-10-07
+-- ============================================================================
+create table if not exists public.entitlements (
+    user_id     uuid primary key references public.profiles (id) on delete cascade,
+    tier        text not null default 'free' check (tier in ('free','pro')),
+    expires_at  timestamptz,
+    created_at  timestamptz not null default now(),
+    updated_at  timestamptz not null default now()
+);
+
+alter table public.entitlements enable row level security;
+
+drop policy if exists "entitlements_select_own" on public.entitlements;
+create policy "entitlements_select_own"
+    on public.entitlements for select
+    using (auth.uid() = user_id);
+
+-- Keep updated_at
+drop trigger if exists entitlements_set_updated_at on public.entitlements;
+create trigger entitlements_set_updated_at
+    before update on public.entitlements
+    for each row execute procedure public.set_updated_at();
+
+-- ============================================================================
 -- Table: location_history
 -- Append-only log of every position update, used to draw movement tracks.
 -- Every upsert on public.locations auto-records a point (see trigger below).
@@ -701,6 +725,25 @@ alter table public.app_secrets enable row level security;
 alter table public.blocked_users enable row level security;
 alter table public.message_reactions enable row level security;
 alter table public.user_reports enable row level security;
+alter table public.entitlements enable row level security;
+
+-- Helper: cek apakah user premium (pro & belum expired)
+create or replace function public.is_premium(p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select exists (
+        select 1 from public.entitlements e
+        where e.user_id = p_user_id
+          and e.tier = 'pro'
+          and (e.expires_at is null or e.expires_at > now())
+    );
+$$;
+
+grant execute on function public.is_premium(uuid) to anon, authenticated;
 
 -- Helper: cek apakah A memblokir B (atau sebaliknya). Berlaku dua arah.
 create or replace function public.is_blocked(p_user_a uuid, p_user_b uuid)
@@ -788,10 +831,20 @@ begin
     if p_lat is null or p_lng is null then
         raise exception 'koordinat tidak valid' using errcode = 'invalid_parameter_value';
     end if;
-    -- Batasi radius agar tidak disalahgunakan (1 - 10 km).
-    if p_radius_km < 1 or p_radius_km > 10 or p_radius_km is null then
-        p_radius_km := 2;
-    end if;
+    -- Clamp radius berdasarkan tier: Free max 2 km, Pro max 10 km
+    declare
+        v_uid uuid := auth.uid();
+        v_max double precision := 2.0;
+    begin
+        if v_uid is not null and public.is_premium(v_uid) then
+            v_max := 10.0;
+        end if;
+        if p_radius_km is null or p_radius_km < 0.1 then
+            p_radius_km := 1.0;
+        end if;
+        if p_radius_km > v_max then
+            p_radius_km := v_max;
+        end if;
 
     return query
         select

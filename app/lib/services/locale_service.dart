@@ -283,6 +283,10 @@ class AppLocalizations {
     'scan_failed': 'Gagal mencari pengguna di sekitar',
     'scan_notice':
         'Menampilkan pengguna Zenlook dalam radius %d km yang bukan teman Anda.',
+    'premium_nearby_limit':
+        'Free hanya bisa scan hingga %d km. Upgrade ke Pro untuk radius hingga %d km.',
+    'premium_upgrade_cta': 'Tingkatkan ke Premium',
+    'premium_pro_badge': 'Pro',
     'now': 'Sekarang',
     'just_now': 'Baru saja',
     'send_nearby_request': 'Kirim permintaan',
@@ -320,6 +324,7 @@ class AppLocalizations {
     'audio_too_large': 'Ukuran file maksimal 25 MB',
     'audio_send_fail': 'Gagal mengirim audio',
 
+    // Premium
     // Sidebar / exit
     'sidebar_tagline': 'Bagikan lokasi bareng teman',
     'logout_app': 'Keluar Aplikasi',
