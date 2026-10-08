@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/locale_service.dart';
+import '../utils/supabase_guard.dart';
 import 'exit_confirmation.dart';
+import 'user_avatar.dart';
 
 class AppSidebar extends StatelessWidget {
   const AppSidebar({
@@ -44,19 +46,7 @@ class AppSidebar extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
               child: Row(
                 children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3D5AFE),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.location_on,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
+                  _ProfileAvatar(),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,6 +154,55 @@ class AppSidebar extends StatelessWidget {
           onTap: () => onSelect(i),
         ),
       ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatefulWidget {
+  @override
+  State<_ProfileAvatar> createState() => _ProfileAvatarState();
+}
+
+class _ProfileAvatarState extends State<_ProfileAvatar> {
+  String? _avatarUrl;
+  String? _name;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final uid = maybeClient()?.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      final res = await Supabase.instance.client
+          .from('profiles')
+          .select('avatar_url, full_name, username')
+          .eq('id', uid)
+          .maybeSingle();
+      if (!mounted) return;
+      setState(() {
+        _avatarUrl = (res?['avatar_url'] as String?)?.isNotEmpty == true
+            ? res!['avatar_url'] as String
+            : null;
+        final full = (res?['full_name'] as String?)?.trim() ?? '';
+        final username = (res?['username'] as String?)?.trim() ?? '';
+        _name = full.isNotEmpty
+            ? full
+            : (username.isNotEmpty ? username : 'Zenlook');
+      });
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return UserAvatar(
+      name: _name ?? 'Zenlook',
+      avatarUrl: _avatarUrl,
+      radius: 19,
+      backgroundColor: const Color(0xFF3D5AFE),
     );
   }
 }
