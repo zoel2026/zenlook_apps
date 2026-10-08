@@ -8,6 +8,7 @@ import '../services/battery_saver_service.dart';
 import '../services/location_service.dart';
 import '../services/locale_service.dart';
 import '../services/nearby_alert.dart';
+import '../services/premium_service.dart';
 import '../services/status_service.dart';
 import '../services/theme_service.dart';
 import '../utils/supabase_guard.dart';
@@ -44,6 +45,7 @@ class _ProfileTabState extends State<ProfileTab> {
   bool _batterySaver = false;
   bool _nearbyAlerts = false;
   int _nearbyRadius = nearbyRadiusDefault;
+  bool _isPro = false;
 
   static const _prefAlwaysShare = 'location_always_share';
 
@@ -215,6 +217,7 @@ class _ProfileTabState extends State<ProfileTab> {
           .select('email, phone')
           .eq('id', uid)
           .maybeSingle();
+      final isPro = await PremiumService.isPremium();
       if (!mounted) return;
       setState(() {
         _email = priv?['email'] as String?;
@@ -241,6 +244,7 @@ class _ProfileTabState extends State<ProfileTab> {
               now: now,
             ) ??
             '';
+        _isPro = isPro;
         _loading = false;
       });
     } catch (_) {
@@ -839,13 +843,28 @@ class _ProfileTabState extends State<ProfileTab> {
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
-                                    child: Text(
-                                      context.l.t('nearby_radius'),
-                                      style: TextStyle(
-                                        color: context.textPrimary,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                      ),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          context.l.t('nearby_radius'),
+                                          style: TextStyle(
+                                            color: context.textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        if (_isPro) ...[
+                                          const SizedBox(width: 6),
+                                          Chip(
+                                            visualDensity: VisualDensity.compact,
+                                            label: Text(
+                                              context.l.t('premium_pro_badge'),
+                                              style:
+                                                  const TextStyle(fontSize: 11),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
                                   Text(
@@ -862,14 +881,30 @@ class _ProfileTabState extends State<ProfileTab> {
                             Slider(
                               value: _nearbyRadius.toDouble(),
                               min: nearbyRadiusMin.toDouble(),
-                              max: nearbyRadiusMax.toDouble(),
-                              divisions: 18,
+                              max: PremiumService.maxNearbyRadiusFor(_isPro),
+                              divisions: ((_isPro
+                                          ? PremiumService.maxNearbyRadiusFor(true)
+                                          : PremiumService.maxNearbyRadiusFor(false)) *
+                                      10)
+                                  .toInt(),
                               label: formatDistance(_nearbyRadius),
                               activeColor: const Color(0xFF3D5AFE),
-                              onChanged: (v) =>
-                                  setState(() => _nearbyRadius = v.round()),
+                              onChanged: (v) {
+                                final clamped = v.round();
+                                setState(() => _nearbyRadius = clamped);
+                              },
                               onChangeEnd: _setNearbyRadius,
                             ),
+                            if (!_isPro) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                context.l.t('premium_nearby_limit', args: [2, 10]),
+                                style: TextStyle(
+                                  color: context.textFaded(0.5),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ],
                         ],
                       ),
